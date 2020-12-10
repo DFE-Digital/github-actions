@@ -16,7 +16,7 @@ outputs:
      value: ${{ steps.tag_version.outputs.found }}   
 runs:
   using: composite
-  - name: Generate Tag from PR Number
+       - name: Generate Tag from PR Number
          id: tag_version
          run: |
            NUM=$(curl -s -X GET "https://api.github.com/repos/${{github.repository}}/pulls?state=all" | jq '.[] | select( .merge_commit_sha == "${{inputs.SHA}}" ) | .number')
