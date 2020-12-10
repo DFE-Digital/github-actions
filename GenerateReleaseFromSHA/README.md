@@ -16,7 +16,7 @@ During the merge process you need to find out what the merging commit was via th
 ```       
        - name: Generate Tag from PR Number
          id:   tag_version
-         uses: DFE-Digital/github-actions/GenerateReleaseFromSHA/action.yml
+         uses: DFE-Digital/github-actions/GenerateReleaseFromSHA@master
          with:
            sha: ${{github.sha}}
 
