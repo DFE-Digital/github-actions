@@ -16,6 +16,7 @@ outputs:
      value: ${{ steps.tag_version.outputs.found }}   
 runs:
   using: composite
+  shell: bash
   steps:
        - name: Generate Tag from PR Number
          id: tag_version
