@@ -1,0 +1,33 @@
+name: Generate Release Data 
+description: Passing in a PR number, this action will provide the text from the PR and the PR Number
+inputs:
+  SHA:
+    description: 'The SHA number that you want to find PR for'
+    required:    true
+outputs:
+  pr_number: 
+     description: The PR Number
+     value: ${{ steps.tag_version.outputs.tag }}
+  pr_text:
+     description: The PR Text
+     value: ${{ steps.tag_version.outputs.changelog }}
+  pr_found:
+     description: PR Found ( 1 or 0 )
+     value: ${{ steps.tag_version.outputs.found }}   
+runs:
+  using: composite
+  - name: Generate Tag from PR Number
+         id: tag_version
+         run: |
+           NUM=$(curl -s -X GET "https://api.github.com/repos/${{github.repository}}/pulls?state=all" | jq '.[] | select( .merge_commit_sha == "${{inputs.SHA}}" ) | .number')
+           if [[ -z ${NUM} ]] ;
+           then
+              echo "Not a pull request merge"
+              echo ::set-output name=found::0
+           else
+              echo "Pull request merge"
+              BODY=$(curl -s -X GET "https://api.github.com/repos/${{github.repository}}/pulls/${NUM}" | jq -r ".body" )
+              echo ::set-output name=tag::"${NUM}"
+              echo ::set-output name=changelog::"${BODY}"
+              echo ::set-output name=found::1
+           fi
