@@ -1,0 +1,36 @@
+name: Select Draft Release Data 
+description: Passing in a Tag , this action will provide the ID of the Release  
+inputs:
+  TAG:
+    description: 'The TAG that you want to find Release for'
+    required:    true
+  TOKEN:
+    description: 'GITHUB Token with access to the draft release'
+    required:    true
+outputs:
+  release_id: 
+     description: The Release ID
+     value: ${{ steps.release.outputs.release_id }}
+  found: 
+     description: Found or Not Found 
+     value: ${{ steps.release.outputs.found }}
+runs:
+  using: composite
+  steps:
+       - name: Find Release
+         shell: bash
+         id: release
+         run: |
+           NUM=$( curl -s --header "Authorization: token ${{inputs.TOKEN}}"  \
+                       -X GET "https://api.github.com/repos/${{github.repository}}/releases" | \
+                       jq '.[] | select( .tag_name=="${{inputs.TAG}}" ) | .id')
+
+           if [[ -z ${NUM} ]] ;
+           then
+              echo "${{inputs.TAG}} not found"
+              echo ::set-output name=found::0
+           else
+              echo "${{inputs.TAG}} found id is ${NUM}"
+              echo ::set-output name=release_id::"${NUM}"
+              echo ::set-output name=found::1
+           fi
