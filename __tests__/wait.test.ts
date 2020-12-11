@@ -24,7 +24,8 @@ describe("wait", () => {
           repo: "repo",
           runId: 2,
           workflowName: workflow.name,
-          sameBranchOnly: true
+          sameBranchOnly: true,
+          initialWaitSeconds: 0
         };
       });
 
@@ -191,6 +192,49 @@ describe("wait", () => {
           messages[messages.length - 1],
           `✋Awaiting run ${input.runId - 1} ...`
         );
+      });
+
+      it("will retry to get previous runs, if not found during first try", async () => {
+        jest.setTimeout(10 * 1000);
+        input.initialWaitSeconds = 2;
+        // give the current run a random id
+        input.runId = 2;
+
+        const run: Run = {
+          id: 1,
+          status: "in_progress",
+          html_url: "1"
+        };
+
+        const mockedRunsFunc = jest
+          .fn()
+          // don't return any runs in the first attempt
+          .mockReturnValueOnce(Promise.resolve([]))
+          // return the inprogress run
+          .mockReturnValueOnce(Promise.resolve([run]))
+          // then return the same run as completed
+          .mockReturnValue(Promise.resolve([(run.status = "completed")]));
+
+        const githubClient = {
+          runs: mockedRunsFunc,
+          workflows: async (owner: string, repo: string) =>
+            Promise.resolve([workflow])
+        };
+
+        const messages: Array<string> = [];
+        const waiter = new Waiter(
+          workflow.id,
+          githubClient,
+          input,
+          (message: string) => {
+            messages.push(message);
+          }
+        );
+        await waiter.wait();
+        assert.deepStrictEqual(messages, [
+          `🔎 Waiting for ${input.initialWaitSeconds} seconds before checking for runs again...`,
+          "✋Awaiting run 1 ..."
+        ]);
       });
     });
   });
