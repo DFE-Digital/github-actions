@@ -8,7 +8,10 @@ During the workflow creating a Draft release is necessary, but there is no simpl
 * TOKEN - Token 
 
 ### Outputs
-* ID - ID of the found release
+* release_id - ID of the found release
+* found - 1 or 0 depending on whether the release was found ( depreciated )
+* release_body - text of release
+* release_name - Title of release
 
 ### Example
 ```       
