@@ -11,6 +11,12 @@ outputs:
   release_id: 
      description: The Release ID
      value: ${{ steps.release.outputs.release_id }}
+  release_name: 
+     description: The Release Name
+     value: ${{ steps.release.outputs.release_name }}
+  release_body: 
+     description: The Release Body
+     value: ${{ steps.release.outputs.release_body }}
   found: 
      description: Found or Not Found 
      value: ${{ steps.release.outputs.found }}
@@ -21,16 +27,19 @@ runs:
          shell: bash
          id: release
          run: |
-           NUM=$( curl -s --header "Authorization: token ${{inputs.TOKEN}}"  \
+           JSON=$( curl -s --header "Authorization: token ${{inputs.TOKEN}}"  \
                        -X GET "https://api.github.com/repos/${{github.repository}}/releases" | \
-                       jq '.[] | select( .tag_name=="${{inputs.TAG}}" ) | .id')
+                       jq '.[] | select( .tag_name=="${{inputs.TAG}}" ) ')
 
+           NUM=$( echo ${JSON} | tr '\r\n' ' ' | jq '.id')
            if [[ -z ${NUM} ]] ;
            then
               echo "${{inputs.TAG}} not found"
               echo ::set-output name=found::0
            else
               echo "${{inputs.TAG}} found id is ${NUM}"
+              echo ::set-output name=release_body::$( echo ${JSON} | tr '\r\n' ' ' | jq '.body')
+              echo ::set-output name=release_name::$( echo ${JSON} | tr '\r\n' ' ' | jq '.name')
               echo ::set-output name=release_id::"${NUM}"
               echo ::set-output name=found::1
            fi
