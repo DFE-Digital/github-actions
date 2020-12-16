@@ -1,0 +1,35 @@
+name: Test Setup Environment Variables
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+    - 'set-up-environment/**'  
+  push:
+    paths:
+    - 'set-up-environment/**'    
+
+jobs:
+  set-up-environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Environment Variables
+        uses: ./set-up-environment
+        with:
+          var_file: .github/env.yml
+                         
+      - name: Print Environment Variables
+        run:  |
+          echo TEAM_NAME=${{ env.TEAM_NAME }}
+          echo DOCKER_IMAGE_NAME=${{ env.DOCKER_IMAGE_NAME }}
+          echo DOCKERHUB_REPOSITORY=${{ env.DOCKERHUB_REPOSITORY }}
+          echo DOMAIN=${{ env.DOMAIN }}
+          echo APPLICATION=${{ env.APPLICATION }}
+          echo PAAS_APPLICATION_NAME=${{ env.PAAS_APPLICATION_NAME }}
+          echo SLACK_FAILURE=${{ env.SLACK_FAILURE }}
+          echo SLACK_SUCCESS=${{ env.SLACK_SUCCESS }}
+          echo SLACK_ICON=${{ env.SLACK_ICON }}
