@@ -38,8 +38,8 @@ runs:
               echo ::set-output name=found::0
            else
               echo "${{inputs.TAG}} found id is ${NUM}"
-              echo ::set-output name=release_body::$( echo ${JSON} | tr '\r\n' ' ' | jq '.body')
-              echo ::set-output name=release_name::$( echo ${JSON} | tr '\r\n' ' ' | jq '.name')
+              echo ::set-output name=release_body::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.body')
+              echo ::set-output name=release_name::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.name')
               echo ::set-output name=release_id::"${NUM}"
               echo ::set-output name=found::1
            fi
