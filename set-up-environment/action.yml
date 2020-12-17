@@ -1,0 +1,19 @@
+name: Setup environment variables from file
+description: Will set contents of a yaml file as environment variable
+inputs:
+  var_file:
+    description: 'YAML file containing variables'
+    required:    true
+    default:     .github/common_environment.yml
+runs:
+  using: composite
+  steps:
+       - name: Setup environment variables from file
+         shell: ruby -- {0}
+         run: |
+          require "yaml"
+          yaml_contents = YAML.load_file("${{ inputs.var_file }}")
+          env_variables = ""
+          yaml_contents.map{ |k,v| env_variables << "#{k}=#{v}\n" }
+          puts env_variables
+          File.write(ENV["GITHUB_ENV"], env_variables, mode: "a")
