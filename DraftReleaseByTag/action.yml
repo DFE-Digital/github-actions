@@ -17,8 +17,11 @@ outputs:
   release_body: 
      description: The Release Body
      value: ${{ steps.release.outputs.release_body }}
+  release_sha: 
+     description: The Release Target Commit SHA
+     value: ${{ steps.release.outputs.release_sha}}   
   found: 
-     description: Found or Not Found 
+     description: Found or Not Found (depriciated)
      value: ${{ steps.release.outputs.found }}
 runs:
   using: composite
@@ -35,11 +38,13 @@ runs:
            if [[ -z ${NUM} ]] ;
            then
               echo "${{inputs.TAG}} not found"
+              echo ::set-output name=release_id::""
               echo ::set-output name=found::0
            else
               echo "${{inputs.TAG}} found id is ${NUM}"
               echo ::set-output name=release_body::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.body')
               echo ::set-output name=release_name::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.name')
+              echo ::set-output name=release_sha::$(  echo ${JSON} | tr '\r\n' ' ' | jq -r '.target_commitish'
               echo ::set-output name=release_id::"${NUM}"
               echo ::set-output name=found::1
            fi
