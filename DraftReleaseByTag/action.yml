@@ -21,7 +21,7 @@ outputs:
      description: The Release Target Commit SHA
      value: ${{ steps.release.outputs.release_sha}}   
   found: 
-     description: Found or Not Found (depriciated)
+     description: Found or Not Found (deprecated)
      value: ${{ steps.release.outputs.found }}
 runs:
   using: composite
@@ -44,7 +44,7 @@ runs:
               echo "${{inputs.TAG}} found id is ${NUM}"
               echo ::set-output name=release_body::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.body')
               echo ::set-output name=release_name::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.name')
-              echo ::set-output name=release_sha::$(  echo ${JSON} | tr '\r\n' ' ' | jq -r '.target_commitish'
+              echo ::set-output name=release_sha::$(  echo ${JSON} | tr '\r\n' ' ' | jq -r '.target_commitish' )
               echo ::set-output name=release_id::"${NUM}"
               echo ::set-output name=found::1
            fi
