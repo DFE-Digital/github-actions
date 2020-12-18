@@ -10,9 +10,10 @@ make it available.
 * TOKEN - GITHUB Token 
 
 ### Outputs
-* release_id - ID of the found release
+* release_id - ID of the found release or NULL if not found
 * release_name - Name of the release
 * release_body - Body text of the release
+* release_sha  - Target Commit SHA of the Release
 * found - 1 or 0 depending on whether the release was found ( depreciated )
 
 ### Example
@@ -28,6 +29,7 @@ make it available.
            TOKEN: ${{secrets.ACTIONS_API_ACCESS_TOKEN}}
        
        - name: Print
+         if:   steps.tag_version.outputs.release_id 
          run:  |
                echo ID ${{steps.tag_version.outputs.release_id}}
                echo NAME ${{steps.tag_version.outputs.release_name}}
