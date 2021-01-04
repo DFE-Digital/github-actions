@@ -9,6 +9,10 @@ location for these variables.
 ### Input Parameters
 * `var_file` -  Name of Environment File optional but defaults to .github/common_environment.yml
 
+### Caution
+> The environment variables are only set for the specific JOB and will need to be set on each job
+> that uses them
+
 ### Example
 [See Example Workflow](/.github/workflows/test-setup-environment-variables.yml)
 ```       
