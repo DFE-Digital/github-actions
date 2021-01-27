@@ -10,7 +10,8 @@ outputs:
      value: ${{ steps.tag_version.outputs.tag }}
   pr_text:
      description: The PR Text
-     value: ${{ steps.tag_version.outputs.changelog }}
+     value: |
+            "${{ steps.tag_version.outputs.changelog }}"
   pr_found:
      description: PR Found ( 1 or 0 )
      value: ${{ steps.tag_version.outputs.found }}   
