@@ -1,0 +1,26 @@
+name: CopyPRtoRelease
+description: Copy PR body to Release keeping Line breaks
+inputs:
+  PR_NUMBER:
+    description: 'Pull Request'
+    required:    true
+  RELEASE_ID:
+    description: 'Release ID'
+    required:    true
+  TOKEN:
+    description: 'GitHub Token'
+    required:    true
+runs:
+  using: composite
+  steps:
+       - name: Install jo
+         shell: bash
+         run: |
+             sudo apt-get install jo
+             
+       - name: Copy PR to Release
+         shell: bash
+         run: |
+              BODY=$(curl -s -X GET -H "Authorization: token ${{inputs.TOKEN}}" "https://api.github.com/repos/${{github.repository}}/pulls/${{inputs.PR_NUMBER}}" | jq -r ".body" )
+              jo body="${BODY}" > tempfile
+              curl -0 -X PATCH -H "Authorization: token ${{inputs.TOKEN}}" https://api.github.com/repos/${{github.repository}}/releases/${{inputs.RELEASE_ID}} --data-binary @tempfile
