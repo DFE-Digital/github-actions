@@ -2,9 +2,9 @@ name: Install Postgres client
 description: Install Postgres client
 inputs:
   version:
-    description: 'Postgres version'
-    required:    true
-    default:     '11'
+    description: Postgres version
+    required: true
+    default: '11'
 runs:
   using: composite
   steps:

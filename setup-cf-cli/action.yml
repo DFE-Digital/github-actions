@@ -1,0 +1,57 @@
+name: Setup the Cloud Foundry CLI
+description: Step to install the cloud foundry cli on the agent.
+inputs:
+  CF_USERNAME:
+    description: Username to login to the PaaS space
+    required: true
+  CF_PASSWORD:
+    description: Password of the user to login to the PaaS space
+    required: true
+  CF_SPACE_NAME:
+    description: Name of the PaaS space to set the target context
+    required: true
+  CF_ORG_NAME:
+    description: Name of the PaaS organisation 
+    required: false
+    default: dfe
+  CF_API_URL:
+    description: PaaS API endpoint, default https://api.london.cloud.service.gov.uk
+    required: false
+    default: https://api.london.cloud.service.gov.uk
+  CF_CLI_VERSION:
+    description: Version of the CLI, allowed values v6 or v7, default v7
+    required: false
+    default: v7
+  INSTALL_CONDUIT:
+    description: Set to true to install the cf conduit extension
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps: 
+    - name : Install cf client
+      shell: bash
+      env:
+        CF_CLI_DOWNLOAD_URL: https://packages.cloudfoundry.org/stable?release=linux64-binary&source=github&version=${{ inputs.CF_CLI_VERSION }}
+      run: |
+        echo "::group:: Download cf CLI"
+        curl -sL ${CF_CLI_DOWNLOAD_URL} | sudo tar -zx -C /usr/local/bin
+        cf version
+        echo "::endgroup::"
+
+        if [ "${{ inputs.INSTALL_CONDUIT }}" == "true" ]
+        then
+          echo "::group:: Install Plugins"
+          cf install-plugin conduit -f
+          echo "::endgroup::"
+        fi
+
+    - name:  cf login
+      shell: bash
+      run: |
+        cf api ${{ inputs.CF_API_URL }}
+        cf auth
+        cf target -o ${{ inputs.CF_ORG_NAME }} -s ${{ inputs.CF_SPACE_NAME }}
+      env:
+        CF_USERNAME: ${{ inputs.CF_USERNAME }}
+        CF_PASSWORD: ${{ inputs.CF_PASSWORD }}
