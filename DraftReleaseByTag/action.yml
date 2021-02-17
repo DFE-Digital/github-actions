@@ -20,31 +20,29 @@ outputs:
   release_sha: 
      description: The Release Target Commit SHA
      value: ${{ steps.release.outputs.release_sha}}   
-  found: 
-     description: Found or Not Found (deprecated)
-     value: ${{ steps.release.outputs.found }}
 runs:
   using: composite
   steps:
        - name: Find Release
-         shell: bash
+         shell: pwsh
          id: release
          run: |
-           JSON=$( curl -s --header "Authorization: token ${{inputs.TOKEN}}"  \
-                       -X GET "https://api.github.com/repos/${{github.repository}}/releases" | \
-                       jq '.[] | select( .tag_name=="${{inputs.TAG}}" ) ')
+            $headers = @{"Authorization"='token ${{inputs.TOKEN}}'}
+            $json = Invoke-RestMethod -Uri "https://api.github.com/repos/${{github.repository}}/releases" -Headers $headers
+            $myTag = $json.Where{ $_.tag_name -eq '${{inputs.TAG}}' }
+            if ( !$myTag.id )
+            {
+                echo "${{inputs.TAG}} Tag Not Found"
+                echo "::set-output name=release_body::"
+                echo "::set-output name=release_name::"
+                echo "::set-output name=release_sha::"
+                echo "::set-output name=release_id::"
+            }
+            else
+            {
+                echo "::set-output name=release_body::$( ${myTag}.body | ConvertTo-Json -Compress )"
+                echo "::set-output name=release_name::$( ${myTag}.name )"
+                echo "::set-output name=release_sha::$(  ${myTag}.target_commitish )"
+                echo "::set-output name=release_id::$(   ${myTag}.id )"
+            }
 
-           NUM=$( echo ${JSON} | tr '\r\n' ' ' | jq '.id')
-           if [[ -z ${NUM} ]] ;
-           then
-              echo "${{inputs.TAG}} not found"
-              echo ::set-output name=release_id::""
-              echo ::set-output name=found::0
-           else
-              echo "${{inputs.TAG}} found id is ${NUM}"
-              echo ::set-output name=release_body::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.body')
-              echo ::set-output name=release_name::$( echo ${JSON} | tr '\r\n' ' ' | jq -r '.name')
-              echo ::set-output name=release_sha::$(  echo ${JSON} | tr '\r\n' ' ' | jq -r '.target_commitish' )
-              echo ::set-output name=release_id::"${NUM}"
-              echo ::set-output name=found::1
-           fi
