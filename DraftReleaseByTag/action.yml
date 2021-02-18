@@ -32,10 +32,12 @@ runs:
             $myTag = $json.Where{ $_.tag_name -eq '${{inputs.TAG}}' }
             if ( !$myTag.id )
             {
-                echo "${{inputs.TAG}} Tag Not Found"
-                echo "::set-output name=release_body::"
-                echo "::set-output name=release_name::"
-                echo "::set-output name=release_sha::"
+                echo "${{inputs.TAG}} Tag Not Found, using master commit"
+                $json = Invoke-RestMethod -Uri "https://api.github.com/repos/${{github.repository}}/commits/master" -Headers $headers
+                $myTag = ${json}.commit 
+                echo "::set-output name=release_body::$( ${myTag}.message | ConvertTo-Json -Compress )"
+                echo "::set-output name=release_name::'No release details master commit'"
+                echo "::set-output name=release_sha::$(  ${json}.sha )"
                 echo "::set-output name=release_id::"
             }
             else
