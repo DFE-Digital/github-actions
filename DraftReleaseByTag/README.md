@@ -14,7 +14,6 @@ make it available.
 * release_name - Name of the release
 * release_body - Body text of the release
 * release_sha  - Target Commit SHA of the Release
-* found - 1 or 0 depending on whether the release was found ( depreciated )
 
 ### Example
 ```       
