@@ -1,0 +1,30 @@
+name: Validate Key Vault Secrets
+description: Action to validate YAML secrets stored in Key Vault
+inputs:
+  KEY_VAULT:
+    description: Name of the Key Vault the secrets are being stored
+    required: true
+  SECRETS:
+    description: A list of the secrets to be validated
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Download fetch_config.rb
+      shell: bash
+      run: |
+        echo "::group:: Download validation script"
+        wget https://raw.githubusercontent.com/DFE-Digital/bat-platform-building-blocks/master/scripts/fetch_config/fetch_config.rb
+        chmod +x fetch_config.rb
+        echo "::endgroup::"
+  
+    - name: Validate Key Vault Secrets
+      shell: pwsh
+      run: |
+        $secrets = '${{ inputs.SECRETS }}'.Split([System.Environment]::NewLine, [System.StringSplitOptions]::RemoveEmptyEntries).Trim()
+        $secrets.foreach{  
+          $key_vault_secret = "${{ inputs.KEY_VAULT }}/$_"
+          echo "::group:: Validating $key_vault_secret"
+          ./fetch_config.rb -s "azure-key-vault-secret:$key_vault_secret" -d quiet && echo "Data in $key_vault_secret looks valid"
+          echo "::endgroup::"
+        }
