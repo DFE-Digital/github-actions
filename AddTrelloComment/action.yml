@@ -1,0 +1,42 @@
+name: Update Trello Comments
+description: Update Trello Comments
+inputs:
+  TRELLO-KEY:
+    description: Trello Key
+    required: true
+  TRELLO-TOKEN:
+    description: Trello Token
+    required: true
+  CARD:
+    description: Card to update
+    required: true
+  MESSAGE:
+    description: Message
+    required: true    
+runs:
+  using: composite
+  steps:    
+      
+      - name: Extract Trello URL
+        shell: ruby -- {0}
+        id: trello-id
+        run: |
+            require "json" 
+            body = "${{ inputs.CARD }}" 
+            if m = body.match(%r{https://trello.com/c/([a-zA-Z0-9]+)}) 
+               puts "::set-output name=id::#{m[1]}" 
+            end
+            
+      - name: Link to Trello card
+        shell: bash
+        run: |
+          curl \
+            --silent \
+            --output /dev/null \
+            --show-error \
+            --fail \
+            --request POST \
+            --url 'https://api.trello.com/1/cards/${{ steps.trello-id.outputs.id }}/actions/comments' \
+            --data-urlencode "key=${{ inputs.TRELLO-KEY }}" \
+            --data-urlencode "token=${{ inputs.TRELLO-TOKEN }}" \
+            --data-urlencode "text=${{ inputs.MESSAGE}}"
