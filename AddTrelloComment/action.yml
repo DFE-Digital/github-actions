@@ -30,13 +30,16 @@ runs:
       - name: Link to Trello card
         shell: bash
         run: |
-          curl \
-            --silent \
-            --output /dev/null \
-            --show-error \
-            --fail \
-            --request POST \
-            --url 'https://api.trello.com/1/cards/${{ steps.trello-id.outputs.id }}/actions/comments' \
-            --data-urlencode "key=${{ inputs.TRELLO-KEY }}" \
-            --data-urlencode "token=${{ inputs.TRELLO-TOKEN }}" \
-            --data-urlencode "text=${{ inputs.MESSAGE}}"
+            if [ ! -z "${{ steps.trello-id.outputs.id }}" ]
+            then
+               curl \
+                 --silent \
+                 --output /dev/null \
+                 --show-error \
+                 --fail \
+                 --request POST \
+                 --url 'https://api.trello.com/1/cards/${{ steps.trello-id.outputs.id }}/actions/comments' \
+                 --data-urlencode "key=${{ inputs.TRELLO-KEY }}" \
+                 --data-urlencode "token=${{ inputs.TRELLO-TOKEN }}" \
+                 --data-urlencode "text=${{ inputs.MESSAGE}}"
+            fi
