@@ -1,0 +1,26 @@
+name: Send Log Event to Logit.io
+description: Send log record to logit.io  
+inputs:
+  LOGIT-API-KEY:
+    description: The Logit.io API key
+    required:    true
+  JSON:
+    description: Payload in Json Format
+    required:    true
+  logtype:
+    description: Log type for logstash filters
+    default:     custom
+runs:
+  using: composite
+  steps:
+       - name: Send to Logit.io 
+         shell: bash
+         id: send
+         run: |
+            curl -i  \
+                 -H "ApiKey: ${{inputs.LOGIT-API-KEY}}"  \
+                 -H "Content-Type: application/json"  \
+                 -H "LogType: ${{inputs.logtype}}"  \
+                 https://api.logit.io/v2  \
+                 -d ${{inputs.JSON }}     
+
