@@ -25,7 +25,7 @@ To obtain them you need to follow the [Trello instructions](https://developer.at
                     
 ```
 ### Pull Request
-If the action is used in a GitHub pull request workflow, by passing the html_url and request body, you  the action will create a link in the Trello card which is a link back to the GitHub pull request
+If the action is used in a GitHub pull request workflow, by passing the html_url and request body the action will create a link in the Trello card, which is a link back to the GitHub pull request.
 
 ```
       - name: Add Trello Comment
