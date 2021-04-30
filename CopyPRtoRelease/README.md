@@ -7,6 +7,7 @@ Copy the PR body to the Release body
 * `PR_NUMBER`  -  Pull Request number from which you want to extract the body from
 * `RELEASE_ID` -  Release ID which you want to update
 * `TOKEN`      -  GITHUB TOKEN
+* `USERS_TO_AVOID` - Optional list of users.
 
 ### Example
 ```       
@@ -21,3 +22,9 @@ Copy the PR body to the Release body
          TOKEN: ${{secrets.GITHUB_TOKEN}}
                     
 ```
+
+## Users to Avoid 
+This is an optional list of users, which defaults to snyk and dependabot. 
+
+When a PR is chosen that was created by Dependabot or Snyk there is often a lot of text and attachments, so rather than choose the body, we just display the title.
+
