@@ -10,6 +10,10 @@ inputs:
   TOKEN:
     description: 'GitHub Token'
     required:    true
+  USERS_TO_AVOID:
+    description: 'List of Users to restrict output to just title'
+    required:    false
+    default:     "snyk-bot, dependabot[bot]"
 runs:
   using: composite
   steps:
@@ -21,6 +25,15 @@ runs:
        - name: Copy PR to Release
          shell: bash
          run: |
-              BODY=$(curl -s -X GET -H "Authorization: token ${{inputs.TOKEN}}" "https://api.github.com/repos/${{github.repository}}/pulls/${{inputs.PR_NUMBER}}" | jq -r ".body" )
+              PULL=$(curl -s -X GET -H "Authorization: token ${{inputs.TOKEN}}" "https://api.github.com/repos/${{github.repository}}/pulls/${{inputs.PR_NUMBER}}" )
+              USER=$( echo ${PULL} | jq -r ".user.login" )
+              echo "User is ${USER}"
+              if  grep -Fq "$USER" <<< "${{inputs.USERS_TO_AVOID}}" ; then 
+                   echo "${USER} is in list"
+                   BODY=$( echo ${PULL} | jq -r ".title" )
+              else
+                   echo "${USER} is not in list"
+                   BODY=$( echo ${PULL} | jq -r ".body" )
+              fi
               jo body="${BODY}" > tempfile
-              curl -0 -X PATCH -H "Authorization: token ${{inputs.TOKEN}}" https://api.github.com/repos/${{github.repository}}/releases/${{inputs.RELEASE_ID}} --data-binary @tempfile
+              curl -s -0 -X PATCH -H "Authorization: token ${{inputs.TOKEN}}" https://api.github.com/repos/${{github.repository}}/releases/${{inputs.RELEASE_ID}} --data-binary @tempfile
