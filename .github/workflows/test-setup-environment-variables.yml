@@ -3,12 +3,13 @@ name: Test Setup Environment Variables
 on:
   pull_request:
     branches:
+      - main
       - master
     paths:
-    - 'set-up-environment/**'  
+    - 'set-up-environment/**'
   push:
     paths:
-    - 'set-up-environment/**'    
+    - 'set-up-environment/**'
 
 jobs:
   set-up-environment:
@@ -21,7 +22,7 @@ jobs:
         uses: ./set-up-environment
         with:
           var_file: .github/env.yml
-                         
+
       - name: Print Environment Variables
         run:  |
           echo TEAM_NAME=${{ env.TEAM_NAME }}
