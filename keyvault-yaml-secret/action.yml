@@ -1,0 +1,36 @@
+name: Keyvault YAML secret
+description: Extract a secret from YAML file stored in Azure key vault
+
+inputs:
+  keyvault:
+    description: Azure keyvault name
+    required: true
+  yaml_secret:
+    description: Keyvault secret containing YAML file
+    required: true
+  secret:
+    description: Name of secret to be extracted from YAML
+    required: true
+outputs:
+  secret-value:
+    value: ${{ steps.secret-output.outputs.value }}
+
+runs:
+  using: composite
+
+  steps:
+    - uses: Azure/get-keyvault-secrets@v1
+      id: keyvault
+      with:
+        keyvault: ${{ inputs.keyvault }}
+        secrets: ${{ inputs.yaml_secret }}
+
+    - name: Extract from YAML
+      id: secret-output
+      shell: bash
+      run: |
+        EXTRACTED_SECRET=$(echo "$yaml" | yq eval '.${{ inputs.secret }}' -)
+        echo "::add-mask::$EXTRACTED_SECRET"
+        echo "::set-output name=value::$EXTRACTED_SECRET"
+      env:
+        yaml: ${{ steps.keyvault.outputs[inputs.yaml_secret] }}
