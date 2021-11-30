@@ -22,7 +22,7 @@ runs:
         id: trello-id
         run: |
             require "json" 
-            body = "${{ inputs.CARD }}" 
+            body = %(${{ inputs.CARD }})
             if m = body.match(%r{https://trello.com/c/([a-zA-Z0-9]+)}) 
                puts "::set-output name=id::#{m[1]}" 
             end
