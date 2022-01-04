@@ -1,0 +1,89 @@
+name: Check Service Principal
+description: 
+inputs:
+  AzureCredentials:
+    description: 'Azure Credentials'
+    required:    true
+  ServicePrincipal:
+    description: 'Service Principal you want to check'
+    required:    true
+  ExpiresWithinDays:
+    description: 'Only print keys that expire within the input value (days)'
+    required:    true
+    default:     30 
+  TennantName:
+    description: 'Tennant Name you want to check'
+    required:    false
+    default:     platform.education.gov.uk
+outputs:
+  json_data:
+     value: ${{ steps.get_expiry.outputs.result }}
+     description: Result in JSON format
+runs:
+  using: composite
+  steps:
+       - name: Get Expiry Date
+         shell: pwsh
+         id: get_expiry
+         run: |
+              function RefreshToken($loginURL, $ClientID, $clientSecret, $tenantName) {
+                  $body = @{grant_type = "client_credentials"; client_id = $ClientID; client_secret = $ClientSecret; scope = $Env:SCOPE }
+                  $oauthResponse = Invoke-RestMethod -Method POST -Uri $loginURL/$tenantName/oauth2/v2.0/token -Body $body
+                  return $oauthResponse
+              }
+
+              $Credentials = ( $Env:AZURE_CREDENTIALS | ConvertFrom-Json)
+              $body = @{grant_type = "client_credentials"; client_id = $Credentials.clientId; client_secret = $Credentials.clientSecret; scope = $Env:SCOPE }
+              $oauth = RefreshToken -loginURL $Env:LOGIN_URL  -resource $resource -ClientID $Credentials.clientId  -clientSecret $Credentials.clientSecret -tenantName $Env:TENNANT_NAME
+              Write-Output "Connected with OAuth"
+              $headerParams = @{'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
+              $ApplicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $Env:APP_SECRETS -Method GET)
+              $Logs = @()
+              $NextCounter = 0
+              do {
+                  foreach ($event in ($ApplicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
+                      $ids = $event.id
+                      $AppName = $event.displayName
+                      $AppID = $event.appId
+                      $secrets = $event.passwordCredentials
+                      $NextCounter++
+                      if ( $AppName -eq $Env:SERVICE_PRINCIPAL ) {
+                           foreach ($s in $secrets) {
+                               $now = Get-Date
+                               $expires = ( New-TimeSpan -Start $now -End $s.endDateTime).ToString("dd")
+                               Write-Output "Is [int]$expires less than or equal to [int]$Env:EXPIRES_WITHIN_DAYS ?"
+                               if ( [int]$expires -le  [int]$Env:EXPIRES_WITHIN_DAYS ){
+                                   Write-Output "Service Principle $Env:SERVICE_PRINCIPAL, $AppName Expires in $expires days"
+                                   $Log = New-Object System.Object
+                                   $Log | Add-Member -MemberType NoteProperty -Name "Application" -Value $AppName
+                                   $Log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
+                                   $Log | Add-Member -MemberType NoteProperty -Name "Name" -Value $s.displayName
+                                   $Log | Add-Member -MemberType NoteProperty -Name "StartDate" -Value $s.startDateTime
+                                   $Log | Add-Member -MemberType NoteProperty -Name "EndDate" -Value $s.endDateTime
+                                   $Logs += $Log
+                               }
+                           }
+                      }
+                      If ($NextCounter -eq 100) {
+                          $odata = $ApplicationsList.Content | ConvertFrom-Json
+                          $AppsSecrets = $odata.'@odata.nextLink'
+                          if ( $AppsSecrets -ne $null)  {
+                               $ApplicationsList = Invoke-WebRequest -UseBasicParsing -Headers $headerParams -Uri $AppsSecrets -Method Get -ContentType "application/Json"
+                          }
+                          $NextCounter = 0
+                          sleep 1
+                      }
+                  }
+              } while ($AppsSecrets -ne $null)
+
+              $result=($Logs | ConvertTo-Json -AsArray -Compress )
+              $json="{'data': $result }" 
+              Write-Output "::set-output name=result::$json"           
+         env:
+           LOGIN_URL:           "https://login.microsoftonline.com"
+           APP_SECRETS:         "https://graph.microsoft.com/v1.0/applications"
+           SCOPE:               "https://graph.microsoft.com/.default"
+           AZURE_CREDENTIALS:   ${{INPUTS.AzureCredentials}} 
+           TENNANT_NAME:        ${{INPUTS.TennantName}}
+           SERVICE_PRINCIPAL:   ${{INPUTS.ServicePrincipal}}
+           EXPIRES_WITHIN_DAYS: ${{INPUTS.ExpiresWithinDays}}
