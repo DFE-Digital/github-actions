@@ -1,7 +1,10 @@
 # CheckServicePrincipal
 
 ### Purpose
-The Service Principal giving access to the Azure Secrets can expire, and there needs to be a method to allow the users to check this and action it before the system stops. 
+The Service Principal giving access to the Azure Secrets can expire, and there needs to be a method to allow the users to check this and action it before the system stops.
+
+### Access Permissions
+To check the Azure Active Directory entry the Github_Action needs the Service Principal to be granted Directory.Read.All at Application level in the API Permissions of the Service Principal. This will require a Service Now ticket for the [CIP team](https://technical-guidance.education.gov.uk/infrastructure/support/#cip-engineering).
 
 ## Input Parameters
 
