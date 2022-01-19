@@ -1,4 +1,8 @@
+## DEPRECATION WARNING: Use [keyvault-yaml-secret](https://github.com/DFE-Digital/keyvault-yaml-secret) which is more powerful and more secure
+
 ## Keyvault YAML secret
+
+
 Extracts a single secret value from a YAML file stored in Azure key vault. The value is masked so it is never shown in the Gihub actions log.
 
 The secret value is retrieved via output `secret-value`.
