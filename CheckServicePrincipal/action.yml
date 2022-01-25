@@ -57,9 +57,9 @@ runs:
                                    $Log = New-Object System.Object
                                    $Log | Add-Member -MemberType NoteProperty -Name "Application" -Value $AppName
                                    $Log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
-                                   $Log | Add-Member -MemberType NoteProperty -Name "Name" -Value $s.displayName
-                                   $Log | Add-Member -MemberType NoteProperty -Name "StartDate" -Value $s.startDateTime
-                                   $Log | Add-Member -MemberType NoteProperty -Name "EndDate" -Value $s.endDateTime
+                                   $Log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $s.displayName
+                                   $Log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $s.startDateTime
+                                   $Log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $s.endDateTime                                   
                                    $Logs += $Log
                                }
                            }
@@ -76,9 +76,20 @@ runs:
                   }
               } while ($AppsSecrets -ne $null)
 
-              $result=($Logs | ConvertTo-Json -AsArray -Compress )
+              if ( $Logs.Count -eq 0 ){
+                 $Log = New-Object System.Object
+                 $Log | Add-Member -MemberType NoteProperty -Name "Application" -Value "Dummy"
+                 $Log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value  9999
+                 $Log | Add-Member -MemberType NoteProperty -Name "Name" -Value ""
+                 $Log | Add-Member -MemberType NoteProperty -Name "StartDate" -Value ""
+                 $Log | Add-Member -MemberType NoteProperty -Name "EndDate" -Value ""              
+                 $Logs += $Log
+              }
+
+              $result=($Logs[0] | ConvertTo-Json -Compress )
               $json="{'data': $result }" 
               Write-Output "::set-output name=result::$json"           
+              Write-Output "$json"           
          env:
            LOGIN_URL:           "https://login.microsoftonline.com"
            APP_SECRETS:         "https://graph.microsoft.com/v1.0/applications"
