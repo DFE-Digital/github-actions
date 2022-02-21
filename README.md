@@ -12,7 +12,6 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [DraftReleaseByTag](DraftReleaseByTag)
 * [GenerateReleaseFromSHA](GenerateReleaseFromSHA)
 * [install-postgres-client](install-postgres-client)
-* [keyvault-yaml-secret](keyvault-yaml-secret)
 * [SendToLogit](SendToLogit)
 * [set-up-environment](set-up-environment)
 * [setup-cf-cli](setup-cf-cli)
