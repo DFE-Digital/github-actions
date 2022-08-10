@@ -1,5 +1,5 @@
 name: Check Service Principal
-description: 
+description:
 inputs:
   AzureCredentials:
     description: 'Azure Credentials'
@@ -10,7 +10,7 @@ inputs:
   ExpiresWithinDays:
     description: 'Only print keys that expire within the input value (days)'
     required:    true
-    default:     30 
+    default:     30
   TennantName:
     description: 'Tennant Name you want to check'
     required:    false
@@ -26,75 +26,75 @@ runs:
          shell: pwsh
          id: get_expiry
          run: |
-              function RefreshToken($loginURL, $ClientID, $clientSecret, $tenantName) {
-                  $body = @{grant_type = "client_credentials"; client_id = $ClientID; client_secret = $ClientSecret; scope = $Env:SCOPE }
+              function RefreshToken($loginURL, $clientId, $clientSecret, $tenantName) {
+                  $body = @{grant_type = "client_credentials"; client_id = $clientId; client_secret = $clientSecret; scope = $env:SCOPE }
                   $oauthResponse = Invoke-RestMethod -Method POST -Uri $loginURL/$tenantName/oauth2/v2.0/token -Body $body
                   return $oauthResponse
               }
 
-              $Credentials = ( $Env:AZURE_CREDENTIALS | ConvertFrom-Json)
-              $body = @{grant_type = "client_credentials"; client_id = $Credentials.clientId; client_secret = $Credentials.clientSecret; scope = $Env:SCOPE }
-              $oauth = RefreshToken -loginURL $Env:LOGIN_URL  -resource $resource -ClientID $Credentials.clientId  -clientSecret $Credentials.clientSecret -tenantName $Env:TENNANT_NAME
+              $credentials = ( $env:AZURE_CREDENTIALS | ConvertFrom-Json)
+              $body = @{grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $env:SCOPE }
+              $oauth = RefreshToken -loginURL $env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $env:TENNANT_NAME
               Write-Output "Connected with OAuth"
               $headerParams = @{'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
-              $ApplicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $Env:APP_SECRETS -Method GET)
-              $Logs = @()
-              $NextCounter = 0
+              $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $env:APP_SECRETS -Method GET)
+              $logs = @()
+              $nextCounter = 0
               do {
-                  foreach ($event in ($ApplicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
+                  foreach ($event in ($applicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
                       $ids = $event.id
-                      $AppName = $event.displayName
-                      $AppID = $event.appId
-                      $secrets = $event.passwordCredentials
-                      $NextCounter++
-                      if ( $AppName -eq $Env:SERVICE_PRINCIPAL ) {
-                           foreach ($s in $secrets) {
+                      $appName = $event.displayName
+                      $appId = $event.appId
+                      $appSecret = $event.passwordCredentials
+                      $nextCounter++
+                      if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
+                           foreach ($secret in $appSecret) {
                                $now = Get-Date
-                               $expires = ( New-TimeSpan -Start $now -End $s.endDateTime).ToString("dd")
-                               Write-Output "Is [int]$expires less than or equal to [int]$Env:EXPIRES_WITHIN_DAYS ?"
-                               if ( [int]$expires -le  [int]$Env:EXPIRES_WITHIN_DAYS ){
-                                   Write-Output "Service Principle $Env:SERVICE_PRINCIPAL, $AppName Expires in $expires days"
-                                   $Log = New-Object System.Object
-                                   $Log | Add-Member -MemberType NoteProperty -Name "Application" -Value $AppName
-                                   $Log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
-                                   $Log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $s.displayName
-                                   $Log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $s.startDateTime
-                                   $Log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $s.endDateTime                                   
-                                   $Logs += $Log
+                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
+                               Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
+                               if ( [int]$expires -le  [int]$env:EXPIRES_WITHIN_DAYS ){
+                                   Write-Output "Service Principle $env:SERVICE_PRINCIPAL, $appName Expires in $expires days"
+                                   $log = New-Object System.Object
+                                   $log | Add-Member -MemberType NoteProperty -Name "Application" -Value $appName
+                                   $log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
+                                   $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $secret.displayName
+                                   $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
+                                   $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
+                                   $logs += $log
                                }
                            }
                       }
-                      If ($NextCounter -eq 100) {
-                          $odata = $ApplicationsList.Content | ConvertFrom-Json
-                          $AppsSecrets = $odata.'@odata.nextLink'
-                          if ( $AppsSecrets -ne $null)  {
-                               $ApplicationsList = Invoke-WebRequest -UseBasicParsing -Headers $headerParams -Uri $AppsSecrets -Method Get -ContentType "application/Json"
+                      If ($nextCounter -eq 100) {
+                          $odata = $applicationsList.Content | ConvertFrom-Json
+                          $appsSecrets = $odata.'@odata.nextLink'
+                          if ( $appsSecrets -ne $null)  {
+                               $applicationsList = Invoke-WebRequest -UseBasicParsing -Headers $headerParams -Uri $appsSecrets -Method Get -ContentType "application/Json"
                           }
-                          $NextCounter = 0
+                          $nextCounter = 0
                           sleep 1
                       }
                   }
-              } while ($AppsSecrets -ne $null)
+              } while ($appsSecrets -ne $null)
 
-              if ( $Logs.Count -eq 0 ){
-                 $Log = New-Object System.Object
-                 $Log | Add-Member -MemberType NoteProperty -Name "Application" -Value "Dummy"
-                 $Log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value  9999
-                 $Log | Add-Member -MemberType NoteProperty -Name "Name" -Value ""
-                 $Log | Add-Member -MemberType NoteProperty -Name "StartDate" -Value ""
-                 $Log | Add-Member -MemberType NoteProperty -Name "EndDate" -Value ""              
-                 $Logs += $Log
+              if ( $logs.Count -eq 0 ){
+                 $log = New-Object System.Object
+                 $log | Add-Member -MemberType NoteProperty -Name "Application" -Value "Dummy"
+                 $log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value  9999
+                 $log | Add-Member -MemberType NoteProperty -Name "Name" -Value ""
+                 $log | Add-Member -MemberType NoteProperty -Name "StartDate" -Value ""
+                 $log | Add-Member -MemberType NoteProperty -Name "EndDate" -Value ""
+                 $logs += $log
               }
 
-              $result=($Logs[0] | ConvertTo-Json -Compress )
-              $json="{'data': $result }" 
-              Write-Output "::set-output name=result::$json"           
-              Write-Output "$json"           
+              $result=($logs[0] | ConvertTo-Json -Compress )
+              $json="{'data': $result }"
+              Write-Output "::set-output name=result::$json"
+              Write-Output "$json"
          env:
            LOGIN_URL:           "https://login.microsoftonline.com"
            APP_SECRETS:         "https://graph.microsoft.com/v1.0/applications"
            SCOPE:               "https://graph.microsoft.com/.default"
-           AZURE_CREDENTIALS:   ${{INPUTS.AzureCredentials}} 
+           AZURE_CREDENTIALS:   ${{INPUTS.AzureCredentials}}
            TENNANT_NAME:        ${{INPUTS.TennantName}}
            SERVICE_PRINCIPAL:   ${{INPUTS.ServicePrincipal}}
            EXPIRES_WITHIN_DAYS: ${{INPUTS.ExpiresWithinDays}}
