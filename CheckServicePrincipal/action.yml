@@ -44,10 +44,10 @@ runs:
                   foreach ($event in ($applicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
                       $ids = $event.id
                       $appName = $event.displayName
-                      $appId = $event.appId
                       $appSecrets = $event.passwordCredentials
                       $nextCounter++
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
+                          Write-Output "Service Principal matching our search criteria found."
                           foreach ($secret in $appSecrets) {
                               $now = Get-Date
                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
@@ -57,7 +57,7 @@ runs:
                               $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $secret.displayName
                               $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
                               $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
-                              Write-Output "Secret expiry: $($secret.endDateTime)"
+                              Write-Output "Current secret expiry date: $($secret.endDateTime)"
                               Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
                               if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
@@ -66,7 +66,7 @@ runs:
                                   break
                               }
                               else {
-                                  Write-Output "Secret is not -le"
+                                  Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
                                   $logs += $log
                               }
