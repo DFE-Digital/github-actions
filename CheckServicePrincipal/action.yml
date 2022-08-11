@@ -40,7 +40,7 @@ runs:
               $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $env:APP_SECRETS -Method GET)
               $logs = @()
               $nextCounter = 0
-              do {
+              :servicePrincipalSearch do {
                   foreach ($event in ($applicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
                       $ids = $event.id
                       $appName = $event.displayName
@@ -65,13 +65,13 @@ runs:
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $true
                                   $logs += $log
-                                  break
+                                  break servicePrincipalSearch
                               }
                               else {
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
                                   $logs += $log
-                                  break
+                                  break servicePrincipalSearch
                               }
                           }
                       }
