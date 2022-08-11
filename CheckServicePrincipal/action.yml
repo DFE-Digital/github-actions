@@ -59,7 +59,6 @@ runs:
                               $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
                               $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
                               Write-Output "Closest secret expiry date: $($secret.endDateTime.ToString("dd/MM/yyyy HH:MM:ss"))"
-                              Write-Output "Is the number of days to expiry $expires less than or equal to our alerting window of $env:EXPIRES_WITHIN_DAYS days?"
                               if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $true
