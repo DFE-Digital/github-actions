@@ -45,7 +45,7 @@ runs:
                       $ids = $event.id
                       $appName = $event.displayName
                       $appId = $event.appId
-                      $appSecret = $event.passwordCredentials
+                      $appSecrets = $event.passwordCredentials
                       $nextCounter++
                       Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $($env:SERVICE_PRINCIPAL) ?"
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
