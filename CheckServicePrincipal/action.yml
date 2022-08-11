@@ -27,21 +27,18 @@ runs:
          id: get_expiry
          run: |
               function RefreshToken($loginURL, $clientId, $clientSecret, $tenantName) {
-                  $body = @{grant_type = "client_credentials"; client_id = $clientId; client_secret = $clientSecret; scope = $Env:SCOPE }
+                  $body = @{grant_type = "client_credentials"; client_id = $clientId; client_secret = $clientSecret; scope = $env:SCOPE }
                   $oauthResponse = Invoke-RestMethod -Method POST -Uri $loginURL/$tenantName/oauth2/v2.0/token -Body $body
                   return $oauthResponse
               }
 
-              $credentials = ( $Env:AZURE_CREDENTIALS | ConvertFrom-Json)
-              $body = @{grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $Env:SCOPE }
-              $oauth = RefreshToken -loginURL $Env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $Env:TENNANT_NAME
+              $credentials = ( $env:AZURE_CREDENTIALS | ConvertFrom-Json)
+              $body = @{grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $env:SCOPE }
+              $oauth = RefreshToken -loginURL $env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $env:TENNANT_NAME
               Write-Output "Connected with OAuth"
               $headerParams = @{'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
-              $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $Env:APP_SECRETS -Method GET)
+              $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $env:APP_SECRETS -Method GET)
               $logs = @()
-              $expiringSecrets = @()
-              $sortedLogs = @()
-              $result = @()
               $nextCounter = 0
               do {
                   foreach ($event in ($applicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
@@ -50,30 +47,22 @@ runs:
                       $appId = $event.appId
                       $appSecret = $event.passwordCredentials
                       $nextCounter++
-                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $($Env:SERVICE_PRINCIPAL)?"
-                      if ( $appName -eq $Env:SERVICE_PRINCIPAL ) {
-                          foreach ($secret in $appSecrets) {
-                              $now = Get-Date
-                              $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
-                              $log = New-Object System.Object
-                              $log | Add-Member -MemberType NoteProperty -Name "Application" -Value $appName
-                              $log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
-                              $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $secret.displayName
-                              $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
-                              $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
-                              Write-Output "Current secret expiry date: $($secret.endDateTime)"
-                              Write-Output "Is [int]$expires less than or equal to [int]$EXPIRES_WITHIN_DAYS ?"
-                              if ( [int]$expires -le [int]$EXPIRES_WITHIN_DAYS ) {
-                                  Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
-                                  $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $true
-                                  $logs += $log
-                                  break
-                              }
-                              else {
-                                  $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
-                                  $logs += $log
-                              }
-                          }
+                      if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
+                           foreach ($secret in $appSecret) {
+                               $now = Get-Date
+                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
+                               Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
+                               if ( [int]$expires -le  [int]$env:EXPIRES_WITHIN_DAYS ){
+                                   Write-Output "Service Principle $env:SERVICE_PRINCIPAL, $appName Expires in $expires days"
+                                   $log = New-Object System.Object
+                                   $log | Add-Member -MemberType NoteProperty -Name "Application" -Value $appName
+                                   $log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
+                                   $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $secret.displayName
+                                   $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
+                                   $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
+                                   $logs += $log
+                               }
+                           }
                       }
                       If ($nextCounter -eq 100) {
                           $odata = $applicationsList.Content | ConvertFrom-Json
@@ -87,25 +76,17 @@ runs:
                   }
               } while ($appsSecrets -ne $null)
 
-              # If we have an expiring secret then return the details
-              if ($expiringSecrets = $logs | Where-Object Alert -eq true) {
-                  Write-Output "Service principal has a secret that expires within specified period of $EXPIRES_WITHIN_DAYS days. Alert."
-                  $result = ($expiringSecrets | ConvertTo-Json -Compress)
-              }
-              elseif (!$logs) {
-                  # If we didn't find a service principal that matched then we don't need to alert
-                  Write-Output "No matching service principals found."
-                  $logs = New-Object System.Object
-                  $logs | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
-                  $result = ($logs | ConvertTo-Json -Compress)
-              }
-              else {
-                  # If we have no expiring secrets, then return the one that expires soonest
-                  Write-Output "Service principal has no secrets expiring within specified period of $EXPIRES_WITHIN_DAYS days."
-                  $sortedLogs = ($logs | Sort-Object -Property ExpiresDays)
-                  $result = ($sortedLogs[0] | ConvertTo-Json -Compress)
+              if ( $logs.Count -eq 0 ){
+                 $log = New-Object System.Object
+                 $log | Add-Member -MemberType NoteProperty -Name "Application" -Value "Dummy"
+                 $log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value  9999
+                 $log | Add-Member -MemberType NoteProperty -Name "Name" -Value ""
+                 $log | Add-Member -MemberType NoteProperty -Name "StartDate" -Value ""
+                 $log | Add-Member -MemberType NoteProperty -Name "EndDate" -Value ""
+                 $logs += $log
               }
 
+              $result=($logs[0] | ConvertTo-Json -Compress )
               $json="{'data': $result }"
               Write-Output "::set-output name=result::$json"
               Write-Output "$json"
