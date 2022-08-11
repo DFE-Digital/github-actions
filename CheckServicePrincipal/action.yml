@@ -32,11 +32,11 @@ runs:
                   return $oauthResponse
               }
 
-              $credentials = ( $env:AZURE_CREDENTIALS | ConvertFrom-Json)
-              $body = @{grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $env:SCOPE }
+              $credentials = ( $env:AZURE_CREDENTIALS | ConvertFrom-Json )
+              $body = @{ grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $env:SCOPE }
               $oauth = RefreshToken -loginURL $env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $env:TENNANT_NAME
               Write-Output "Connected with OAuth"
-              $headerParams = @{'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
+              $headerParams = @{ 'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
               $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $env:APP_SECRETS -Method GET)
               $logs = @()
               $nextCounter = 0
@@ -48,7 +48,7 @@ runs:
                       $nextCounter++
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
                           Write-Output "Service Principal matching our search criteria found with $($appSecrets.Count) secret(s)."
-                          foreach ($secret in $appSecrets) {
+                          foreach ( $secret in $appSecrets ) {
                               $now = Get-Date
                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
                               $log = New-Object System.Object
@@ -57,6 +57,7 @@ runs:
                               $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $secret.displayName
                               $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
                               $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
+                              Write-Output "nextCounter: $nextCounter"
                               Write-Output "Current secret expiry date: $($secret.endDateTime.ToString("dd/MM/yyyy HH:MM:ss"))"
                               Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
                               if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
@@ -72,10 +73,10 @@ runs:
                               }
                           }
                       }
-                      If ($nextCounter -eq 100) {
+                      If ( $nextCounter -eq 100 ) {
                           $odata = $applicationsList.Content | ConvertFrom-Json
                           $appsSecrets = $odata.'@odata.nextLink'
-                          if ( $appsSecrets -ne $null)  {
+                          if ( $appsSecrets -ne $null) {
                                $applicationsList = Invoke-WebRequest -UseBasicParsing -Headers $headerParams -Uri $appsSecrets -Method Get -ContentType "application/Json"
                           }
                           $nextCounter = 0
