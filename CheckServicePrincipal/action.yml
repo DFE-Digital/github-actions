@@ -47,7 +47,7 @@ runs:
                       $appSecrets = $event.passwordCredentials
                       $nextCounter++
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
-                          Write-Output "Service Principal matching our search criteria found with $($appSecrets.Count) secret(s)."
+                          Write-Output "Service Principal matching our search criteria '$($env:SERVICE_PRINCIPAL)' found with $($appSecrets.Count) secret(s)."
                           $appSecrets = $appSecrets | Sort-Object -Property endDateTime
                           foreach ( $secret in $appSecrets ) {
                               $now = Get-Date
@@ -58,9 +58,8 @@ runs:
                               $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $secret.displayName
                               $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
                               $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
-                              Write-Output "nextCounter: $nextCounter"
-                              Write-Output "Current secret expiry date: $($secret.endDateTime.ToString("dd/MM/yyyy HH:MM:ss"))"
-                              Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
+                              Write-Output "Closest secret expiry date: $($secret.endDateTime.ToString("dd/MM/yyyy HH:MM:ss"))"
+                              Write-Output "Is the number of days to expiry $expires less than or equal to our alerting window of $env:EXPIRES_WITHIN_DAYS days?"
                               if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $true
