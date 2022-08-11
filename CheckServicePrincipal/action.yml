@@ -27,17 +27,17 @@ runs:
          id: get_expiry
          run: |
               function RefreshToken($loginURL, $clientId, $clientSecret, $tenantName) {
-                  $body = @{grant_type = "client_credentials"; client_id = $clientId; client_secret = $clientSecret; scope = $env:SCOPE }
+                  $body = @{grant_type = "client_credentials"; client_id = $clientId; client_secret = $clientSecret; scope = $Env:SCOPE }
                   $oauthResponse = Invoke-RestMethod -Method POST -Uri $loginURL/$tenantName/oauth2/v2.0/token -Body $body
                   return $oauthResponse
               }
 
-              $credentials = ( $env:AZURE_CREDENTIALS | ConvertFrom-Json)
-              $body = @{grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $env:SCOPE }
-              $oauth = RefreshToken -loginURL $env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $env:TENNANT_NAME
+              $credentials = ( $Env:AZURE_CREDENTIALS | ConvertFrom-Json)
+              $body = @{grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $Env:SCOPE }
+              $oauth = RefreshToken -loginURL $Env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $Env:TENNANT_NAME
               Write-Output "Connected with OAuth"
               $headerParams = @{'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
-              $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $env:APP_SECRETS -Method GET)
+              $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $Env:APP_SECRETS -Method GET)
               $logs = @()
               $expiringSecrets = @()
               $sortedLogs = @()
@@ -50,8 +50,8 @@ runs:
                       $appId = $event.appId
                       $appSecret = $event.passwordCredentials
                       $nextCounter++
-                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $env:SERVICE_PRINCIPAL?"
-                      if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
+                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $Env:SERVICE_PRINCIPAL?"
+                      if ( $appName -eq $Env:SERVICE_PRINCIPAL ) {
                           foreach ($secret in $appSecrets) {
                               $now = Get-Date
                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
