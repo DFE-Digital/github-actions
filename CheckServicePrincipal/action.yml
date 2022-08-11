@@ -49,6 +49,7 @@ runs:
                       $nextCounter++
                       Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $($env:SERVICE_PRINCIPAL) ?"
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
+                        Write-Output "appName -eq SERVICE_PRINCIPAL"
                           foreach ($secret in $appSecrets) {
                               $now = Get-Date
                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
@@ -67,6 +68,7 @@ runs:
                                   break
                               }
                               else {
+                                  Write-Output "Secret is not -le"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
                                   $logs += $log
                               }
