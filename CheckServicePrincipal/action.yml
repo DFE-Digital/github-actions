@@ -47,7 +47,6 @@ runs:
                       $appId = $event.appId
                       $appSecrets = $event.passwordCredentials
                       $nextCounter++
-                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $($env:SERVICE_PRINCIPAL) ?"
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
                         Write-Output "appName -eq SERVICE_PRINCIPAL"
                           foreach ($secret in $appSecrets) {
@@ -88,7 +87,7 @@ runs:
 
               # If we have an expiring secret then return the details
               if ($expiringSecrets = $logs | Where-Object Alert -eq true) {
-                  Write-Output "Service principal has a secret that expires within $EXPIRES_WITHIN_DAYS days. Alert."
+                  Write-Output "Service principal has a secret that expires within $env:EXPIRES_WITHIN_DAYS days. Alert."
                   $result = ($expiringSecrets | ConvertTo-Json -Compress)
               }
               elseif (!$logs) {
@@ -100,7 +99,7 @@ runs:
               }
               else {
                   # If we have no expiring secrets, then return the one that expires soonest
-                  Write-Output "Service principal has no secrets expiring within specified period of $EXPIRES_WITHIN_DAYS days."
+                  Write-Output "Service principal has no secrets expiring within specified period of $env:EXPIRES_WITHIN_DAYS days."
                   $sortedLogs = ($logs | Sort-Object -Property ExpiresDays)
                   $result = ($sortedLogs[0] | ConvertTo-Json -Compress)
               }
