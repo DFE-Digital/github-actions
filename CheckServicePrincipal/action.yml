@@ -47,6 +47,7 @@ runs:
                       $appId = $event.appId
                       $appSecret = $event.passwordCredentials
                       $nextCounter++
+                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $($env:SERVICE_PRINCIPAL) ?"
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
                           foreach ($secret in $appSecrets) {
                               $now = Get-Date
@@ -66,6 +67,7 @@ runs:
                                   break
                               }
                               else {
+                                  Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
                                   $logs += $log
                               }
