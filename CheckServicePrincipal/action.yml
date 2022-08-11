@@ -50,7 +50,7 @@ runs:
                       $appId = $event.appId
                       $appSecret = $event.passwordCredentials
                       $nextCounter++
-                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $Env:SERVICE_PRINCIPAL?"
+                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $($Env:SERVICE_PRINCIPAL)?"
                       if ( $appName -eq $Env:SERVICE_PRINCIPAL ) {
                           foreach ($secret in $appSecrets) {
                               $now = Get-Date
