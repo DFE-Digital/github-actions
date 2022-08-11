@@ -62,7 +62,7 @@ runs:
                               Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
                               if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
-                                  $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
+                                  $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $true
                                   $logs += $log
                                   break
                               }
