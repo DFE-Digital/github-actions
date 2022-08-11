@@ -48,6 +48,7 @@ runs:
                       $nextCounter++
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
                           Write-Output "Service Principal matching our search criteria found with $($appSecrets.Count) secret(s)."
+                          $appSecrets = $appSecrets | Sort-Object -Property endDateTime
                           foreach ( $secret in $appSecrets ) {
                               $now = Get-Date
                               $expires = ( New-TimeSpan -Start $now -End $secret.endDateTime).ToString("dd")
@@ -70,6 +71,7 @@ runs:
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
                                   $logs += $log
+                                  break
                               }
                           }
                       }
@@ -100,8 +102,7 @@ runs:
               else {
                   # If we have no expiring secrets, then return the one that expires soonest
                   Write-Output "Service principal has no secrets expiring within specified period of $($env:EXPIRES_WITHIN_DAYS) days."
-                  $sortedLogs = ($logs | Sort-Object -Property ExpiresDays)
-                  $result = ($sortedLogs[0] | ConvertTo-Json -Compress)
+                  $result = ($logs[0] | ConvertTo-Json -Compress)
               }
 
               $json="{'data': $result }"
