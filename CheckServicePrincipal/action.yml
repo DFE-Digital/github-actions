@@ -59,15 +59,14 @@ runs:
                               $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $secret.startDateTime
                               $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $secret.endDateTime
                               Write-Output "Secret expiry: $($secret.endDateTime)"
-                              Write-Output "Is [int]$expires less than or equal to [int]$EXPIRES_WITHIN_DAYS ?"
-                              if ( [int]$expires -le [int]$EXPIRES_WITHIN_DAYS ) {
+                              Write-Output "Is [int]$expires less than or equal to [int]$env:EXPIRES_WITHIN_DAYS ?"
+                              if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
                                   Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $true
                                   $logs += $log
                                   break
                               }
                               else {
-                                  Write-Output "Service principal secret '$($secret.displayName)' expires in $expires days"
                                   $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
                                   $logs += $log
                               }
