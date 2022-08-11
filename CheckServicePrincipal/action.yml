@@ -39,6 +39,9 @@ runs:
               $headerParams = @{'Authorization' = "$($oauth.token_type) $($oauth.access_token)" }
               $applicationsList = (Invoke-WebRequest -Headers $headerParams -Uri $env:APP_SECRETS -Method GET)
               $logs = @()
+              $expiringSecrets = @()
+              $sortedLogs = @()
+              $result = @()
               $nextCounter = 0
               do {
                   foreach ($event in ($applicationsList.Content | ConvertFrom-Json | select -ExpandProperty value)) {
@@ -47,6 +50,7 @@ runs:
                       $appId = $event.appId
                       $appSecret = $event.passwordCredentials
                       $nextCounter++
+                      Write-Output "appName: $appName -eq SERVICE_PRINCIPAL: $SERVICE_PRINCIPAL?"
                       if ( $appName -eq $env:SERVICE_PRINCIPAL ) {
                           foreach ($secret in $appSecrets) {
                               $now = Get-Date
