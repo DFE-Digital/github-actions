@@ -88,23 +88,23 @@ runs:
               if ($expiringSecrets = $logs | Where-Object Alert -eq true) {
                   # If we have an expiring secret then return the details
                   Write-Output "Service principal has a secret that expires within $($env:EXPIRES_WITHIN_DAYS) days. Alert."
-                  $result = ($expiringSecrets | ConvertTo-Json)
+                  $result = $expiringSecrets
               }
               elseif (!$logs) {
                   # If we didn't find a service principal that matched then we don't need to alert
                   Write-Output "No matching service principals found."
                   $logs = New-Object System.Object
                   $logs | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
-                  $result = ($logs | ConvertTo-Json)
+                  $result = $logs
               }
               else {
                   Write-Output "Service principal has no secrets expiring within specified period of $($env:EXPIRES_WITHIN_DAYS) days."
-                  $result = ($logs[0] | ConvertTo-Json)
+                  $result = $logs[0]
               }
 
-              $json="{'data': $result }"
+              $json="{'data': $($result | ConvertTo-Json -Compress) }"
               Write-Output "::set-output name=result::$json"
-              Write-Output "$result"
+              Write-Output "$($result | ConvertTo-Json)"
          env:
            LOGIN_URL:           "https://login.microsoftonline.com"
            APP_SECRETS:         "https://graph.microsoft.com/v1.0/applications"
