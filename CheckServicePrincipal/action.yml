@@ -102,8 +102,7 @@ runs:
                   $result = $logs[0]
               }
 
-              $resultCompressed = $result | ConvertTo-Json -Compress
-              $json="{'data': $resultCompressed }"
+              $json="{'data': $($result | ConvertTo-Json -Compress) }"
               Write-Output "::set-output name=result::$json"
               Write-Output "$($result | ConvertTo-Json)"
          env:
