@@ -21,7 +21,7 @@
   "author": "softprops",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.2.6",
+    "@actions/core": "^1.9.1",
     "@octokit/rest": "^16.43.1",
     "@octokit/plugin-throttling": "^3.2.0"
   },
