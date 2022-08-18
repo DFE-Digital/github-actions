@@ -10,15 +10,15 @@ To check the Azure Active Directory entry the Github_Action needs the Service Pr
 
 ### AzureCredentials
 Mandatory string containing the Azure Credentials of the user which will carry out the check.
-    
+
 ### ServicePrincipal:
 Mandatory string representing Service Principal you want to check
-    
+
 ### ExpiresWithinDays:
 Optional integer representing the time period in days you wish to check for keys that may expire. Defaults to 30.
 
-### TennantName:
-Optional string containing the Tennant name, defaults to 'platform.education.gov.uk'
+### TenantName:
+Optional string containing the tenant name, defaults to 'platform.education.gov.uk'
 
 ## Outputs
 
@@ -27,8 +27,8 @@ Result in JSON format
 
 ## Example
 
-     
-```       
+
+```
 name: Check Service Principal
 
 on:
@@ -46,8 +46,7 @@ jobs:
         with:
             AzureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
             ServicePrincipal: s146d01-keyvault-readonlyaccess
-      
-     - name: Display
-       run: echo ${{steps.kv.outputs.json_data}}       
-```
 
+     - name: Display
+       run: echo ${{steps.kv.outputs.json_data}}
+```
