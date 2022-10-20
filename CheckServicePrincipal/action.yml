@@ -2,90 +2,61 @@ name: Check Service Principal
 description:
 inputs:
   AzureCredentials:
-    description: 'Azure Credentials'
-    required:    true
+    description: "Azure Credentials"
+    required: true
   ServicePrincipal:
-    description: 'Service Principal you want to check'
-    required:    true
+    description: "Service Principal you want to check"
+    required: true
   ExpiresWithinDays:
-    description: 'Only print keys that expire within the input value (days)'
-    required:    true
-    default:     30
-  TenantName:
-    description: 'Tenant Name you want to check'
-    required:    false
-    default:     platform.education.gov.uk
+    description: "Only print keys that expire within the input value (days)"
+    required: true
+    default: 30
 outputs:
   json_data:
-     value: ${{ steps.get_expiry.outputs.result }}
-     description: Result in JSON format
+    value: ${{ steps.get_expiry.outputs.result }}
+    description: Result in JSON format
 runs:
   using: composite
   steps:
-       - name: Get Expiry Date
-         shell: pwsh
-         id: get_expiry
-         run: |
-              function RefreshToken($loginURL, $clientId, $clientSecret, $tenantName) {
-                  $body = @{grant_type = "client_credentials"; client_id = $clientId; client_secret = $clientSecret; scope = $env:SCOPE }
-                  $oauthResponse = Invoke-RestMethod -Method POST -Uri $loginURL/$tenantName/oauth2/v2.0/token -Body $body
-                  return $oauthResponse
-              }
+    - uses: Azure/login@v1
+      with:
+        creds: ${{ inputs.AzureCredentials }}
+    - name: Get Expiry Date
+      shell: pwsh
+      id: get_expiry
+      run: |
+        $AppSecrets = (az ad app list --display-name $env:SERVICE_PRINCIPAL | ConvertFrom-Json).passwordCredentials
 
-              $credentials = ( $env:AZURE_CREDENTIALS | ConvertFrom-Json )
-              $body = @{ grant_type = "client_credentials"; client_id = $credentials.clientId; client_secret = $credentials.clientSecret; scope = $env:SCOPE }
-              $oauth = RefreshToken -loginURL $env:LOGIN_URL  -resource $resource -clientId $credentials.clientId  -clientSecret $credentials.clientSecret -tenantName $env:TENANT_NAME
-              Write-Output "Connected with OAuth"
-              $headerParams = @{
-                'Authorization' = "$($oauth.token_type) $($oauth.access_token)"
-                'ConsistencyLevel' = "eventual"
-              }
-              $searchUri = '{0}?$search="displayName:{1}"' -f $env:APP_SECRETS, $env:SERVICE_PRINCIPAL
-              $searchResult = ( Invoke-WebRequest -Headers $headerParams -Uri $searchUri -Method GET )
-              $searchResultContent = ( $searchResult.Content | ConvertFrom-Json | Select-Object -ExpandProperty value )
+        if ($AppSecrets) {
+          Write-Output "Service Principal matching our search criteria '$($env:SERVICE_PRINCIPAL)' found with $($AppSecrets.Count) secret(s)."
+          $ClosestSecretToExpiry = $AppSecrets | Sort-Object -Property endDateTime -Top 1
+          $ExpiresInDays = (New-TimeSpan -Start (Get-Date) -End $ClosestSecretToExpiry.endDateTime).ToString("dd")
+          $OutputProperties = @{
+            Application = $env:SERVICE_PRINCIPAL
+            ExpiresDays = $ExpiresInDays
+            Name        = $ClosestSecretToExpiry.displayName
+            StartDate   = $ClosestSecretToExpiry.startDateTime
+            EndDate     = $ClosestSecretToExpiry.endDateTime
+          }
+          Write-Output "Closest secret expiry date: $($ClosestSecretToExpiry.endDateTime.ToString("dd/MM/yyyy HH:MM:ss"))"
+          if ([int]$ExpiresInDays -le [int]$env:EXPIRES_WITHIN_DAYS) {
+            Write-Output "Service principal has a secret that expires within $($env:EXPIRES_WITHIN_DAYS) days. Alert."
+            $OutputProperties["Alert"] = $true
+          }
+          else {
+            Write-Output "Service principal has no secrets expiring within specified period of $($env:EXPIRES_WITHIN_DAYS) days. Don't alert."
+            $OutputProperties["Alert"] = $false
+          }
+        }
+        else {
+          Write-Output "No matching service principals found."
+          $OutputProperties = @{ Alert = $false }
+        }
 
-              if ($searchResultContent) {
-                $appSecrets = $searchResultContent.passwordCredentials
-
-                Write-Output "Service Principal matching our search criteria '$($env:SERVICE_PRINCIPAL)' found with $($appSecrets.Count) secret(s)."
-                $sortedAppSecrets = $appSecrets | Sort-Object -Property endDateTime
-                $closestAppSecret = $sortedAppSecrets[0]
-                $now = Get-Date
-                $expires = ( New-TimeSpan -Start $now -End $closestAppSecret.endDateTime ).ToString("dd")
-                $log = New-Object System.Object
-                $log | Add-Member -MemberType NoteProperty -Name "Application" -Value $searchResultContent.displayName
-                $log | Add-Member -MemberType NoteProperty -Name "ExpiresDays" -Value $expires
-                $log | Add-Member -MemberType NoteProperty -Name "Name"        -Value $closestAppSecret.displayName
-                $log | Add-Member -MemberType NoteProperty -Name "StartDate"   -Value $closestAppSecret.startDateTime
-                $log | Add-Member -MemberType NoteProperty -Name "EndDate"     -Value $closestAppSecret.endDateTime
-                Write-Output "Closest secret expiry date: $($closestAppSecret.endDateTime.ToString("dd/MM/yyyy HH:MM:ss"))"
-                if ( [int]$expires -le [int]$env:EXPIRES_WITHIN_DAYS ) {
-                    Write-Output "Service principal has a secret that expires within $($env:EXPIRES_WITHIN_DAYS) days. Alert."
-                    $alert = $true
-                }
-                else {
-                    Write-Output "Service principal has no secrets expiring within specified period of $($env:EXPIRES_WITHIN_DAYS) days. Don't alert."
-                    $alert = $false
-                }
-                $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $alert
-                $result = $log
-              }
-              else {
-                # If we didn't find a service principal that matched then we don't need to alert
-                Write-Output "No matching service principals found."
-                $log = New-Object System.Object
-                $log | Add-Member -MemberType NoteProperty -Name "Alert" -Value $false
-                $result = $log
-              }
-
-              $json="{'data': $($result | ConvertTo-Json -Compress) }"
-              Write-Output "::set-output name=result::$json"
-              Write-Output "$($result | ConvertTo-Json)"
-         env:
-           LOGIN_URL:           "https://login.microsoftonline.com"
-           APP_SECRETS:         "https://graph.microsoft.com/v1.0/applications"
-           SCOPE:               "https://graph.microsoft.com/.default"
-           AZURE_CREDENTIALS:   ${{INPUTS.AzureCredentials}}
-           TENANT_NAME:        ${{INPUTS.TenantName}}
-           SERVICE_PRINCIPAL:   ${{INPUTS.ServicePrincipal}}
-           EXPIRES_WITHIN_DAYS: ${{INPUTS.ExpiresWithinDays}}
+        $Output = New-Object -TypeName PSCustomObject -Property $OutputProperties
+        Write-Output "$($Output | ConvertTo-Json)"
+        $Json="{'data': $($Output | ConvertTo-Json -Compress) }"
+        Write-Output "result=$Json" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      env:
+        SERVICE_PRINCIPAL: ${{ inputs.ServicePrincipal }}
+        EXPIRES_WITHIN_DAYS: ${{ inputs.ExpiresWithinDays }}
