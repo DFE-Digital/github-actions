@@ -1,35 +1,40 @@
-name: Generate Release Data 
+name: Generate Release Data
 description: Passing in a PR number, this action will provide the text from the PR and the PR Number
 inputs:
-  SHA:
-    description: 'The SHA number that you want to find PR for'
-    required:    true
+   SHA:
+      description: "The SHA number that you want to find PR for"
+      required: true
 outputs:
-  pr_number: 
-     description: The PR Number
-     value: ${{ steps.tag_version.outputs.tag }}
-  pr_text:
-     description: The PR Text
-     value: ${{ steps.tag_version.outputs.changelog }}
-  pr_found:
-     description: PR Found ( 1 or 0 )
-     value: ${{ steps.tag_version.outputs.found }}   
+   pr_number:
+      description: The PR Number
+      value: ${{ steps.tag_version.outputs.tag }}
+   pr_text:
+      description: The PR Text
+      value: ${{ steps.tag_version.outputs.changelog }}
+   pr_found:
+      description: PR Found ( 1 or 0 )
+      value: ${{ steps.tag_version.outputs.found }}
 runs:
-  using: composite
-  steps:
-       - name: Generate Tag from PR Number
-         shell: bash
-         id: tag_version
-         run: |
+   using: composite
+   steps:
+      - name: Generate Tag from PR Number
+        shell: bash
+        id: tag_version
+        run: |
            NUM=$(curl -s -X GET "https://api.github.com/repos/${{github.repository}}/pulls?state=all" | jq '.[] | select( .merge_commit_sha == "${{inputs.SHA}}" ) | .number')
            if [[ -z ${NUM} ]] ;
            then
               echo "Not a pull request merge"
-              echo ::set-output name=found::0
+              echo "found=0" >> $GITHUB_OUTPUT
            else
               echo "Pull request merge"
+              DELIMITER=$(uuidgen)
               BODY=$(curl -s -X GET "https://api.github.com/repos/${{github.repository}}/pulls/${NUM}" | jq -r ".body" )
-              echo ::set-output name=tag::"${NUM}"
-              echo ::set-output name=changelog::"${BODY}"
-              echo ::set-output name=found::1
+              echo "tag=${NUM}" >> $GITHUB_OUTPUT
+
+              echo "changelog<<${DELIMITER}" >> $GITHUB_OUTPUT
+              echo "${BODY}" >> $GITHUB_OUTPUT
+              echo "${DELIMITER}" >> $GITHUB_OUTPUT
+
+              echo "found=1" >> $GITHUB_OUTPUT
            fi
