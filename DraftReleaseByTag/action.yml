@@ -1,50 +1,60 @@
-name: Select Draft Release Data 
-description: Passing in a Tag , this action will provide the ID of the Release  
+name: Select Draft Release Data
+description: Passing in a Tag , this action will provide the ID of the Release
 inputs:
-  TAG:
-    description: 'The TAG that you want to find Release for'
-    required:    true
-  TOKEN:
-    description: 'GITHUB Token with access to the draft release'
-    required:    true
+   TAG:
+      description: "The TAG that you want to find Release for"
+      required: true
+   TOKEN:
+      description: "GITHUB Token with access to the draft release"
+      required: true
 outputs:
-  release_id: 
-     description: The Release ID
-     value: ${{ steps.release.outputs.release_id }}
-  release_name: 
-     description: The Release Name
-     value: ${{ steps.release.outputs.release_name }}
-  release_body: 
-     description: The Release Body
-     value: ${{ steps.release.outputs.release_body }}
-  release_sha: 
-     description: The Release Target Commit SHA
-     value: ${{ steps.release.outputs.release_sha}}   
+   release_id:
+      description: The Release ID
+      value: ${{ steps.release.outputs.release_id }}
+   release_name:
+      description: The Release Name
+      value: ${{ steps.release.outputs.release_name }}
+   release_body:
+      description: The Release Body
+      value: ${{ steps.release.outputs.release_body }}
+   release_sha:
+      description: The Release Target Commit SHA
+      value: ${{ steps.release.outputs.release_sha}}
 runs:
-  using: composite
-  steps:
-       - name: Find Release
-         shell: pwsh
-         id: release
-         run: |
-            $headers = @{"Authorization"='token ${{inputs.TOKEN}}'}
-            $json = Invoke-RestMethod -Uri "https://api.github.com/repos/${{github.repository}}/releases" -Headers $headers
-            $myTag = $json.Where{ $_.tag_name -eq '${{inputs.TAG}}' }
-            if ( !$myTag.id )
-            {
-                echo "${{inputs.TAG}} Tag Not Found, using master commit"
-                $json = Invoke-RestMethod -Uri "https://api.github.com/repos/${{github.repository}}/commits/master" -Headers $headers
-                $myTag = ${json}.commit 
-                echo "::set-output name=release_body::$( ${myTag}.message | ConvertTo-Json -Compress )"
-                echo "::set-output name=release_name::'No release details master commit'"
-                echo "::set-output name=release_sha::$(  ${json}.sha )"
-                echo "::set-output name=release_id::"
-            }
-            else
-            {
-                echo "::set-output name=release_body::$( ${myTag}.body | ConvertTo-Json -Compress )"
-                echo "::set-output name=release_name::$( ${myTag}.name )"
-                echo "::set-output name=release_sha::$(  ${myTag}.target_commitish )"
-                echo "::set-output name=release_id::$(   ${myTag}.id )"
-            }
+   using: composite
+   steps:
+      - name: Find Release
+        shell: pwsh
+        id: release
+        run: |
+           $headers = @{"Authorization"='token ${{inputs.TOKEN}}'}
+           $json = Invoke-RestMethod -Uri "https://api.github.com/repos/${{github.repository}}/releases" -Headers $headers
+           $myTag = $json.Where{ $_.tag_name -eq '${{inputs.TAG}}' }
+           $myDelimiter = [guid]::NewGuid().Guid
+           if ( !$myTag.id )
+           {
+               Write-Output "${{inputs.TAG}} tag not found, using master commit"
 
+               $json = Invoke-RestMethod -Uri "https://api.github.com/repos/${{github.repository}}/commits/master" -Headers $headers
+               $myTag = $json.commit
+
+               Write-Output "release_body<<$($myDelimiter)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "$($myTag.message)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "$($myDelimiter)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+               Write-Output "release_name=No release details master commit" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "release_sha=$($json.sha)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "release_id=" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+           }
+           else
+           {
+               Write-Output "${{inputs.TAG}} tag found, using..."
+
+               Write-Output "release_body<<$($myDelimiter)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "$($myTag.body)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "$($myDelimiter)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+               Write-Output "release_name=$($myTag.name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "release_sha=$($myTag.target_commitish)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+               Write-Output "release_id=$($myTag.id)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+           }
