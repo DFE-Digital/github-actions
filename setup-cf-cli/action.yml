@@ -11,7 +11,7 @@ inputs:
     description: Name of the PaaS space to set the target context
     required: true
   CF_ORG_NAME:
-    description: Name of the PaaS organisation 
+    description: Name of the PaaS organisation
     required: false
     default: dfe
   CF_API_URL:
@@ -28,14 +28,15 @@ inputs:
     default: 'false'
 runs:
   using: composite
-  steps: 
+  steps:
     - name : Install cf client
       shell: bash
       env:
         CF_CLI_DOWNLOAD_URL: https://packages.cloudfoundry.org/stable?release=linux64-binary&source=github&version=${{ inputs.CF_CLI_VERSION }}
+        USER_AGENT: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15
       run: |
         echo "::group:: Download cf CLI"
-        curl -sL ${CF_CLI_DOWNLOAD_URL} | sudo tar -zx -C /usr/local/bin
+        curl -A "${USER_AGENT}" -sL ${CF_CLI_DOWNLOAD_URL} | sudo tar -zx -C /usr/local/bin
         cf version
         echo "::endgroup::"
 
