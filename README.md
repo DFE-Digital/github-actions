@@ -13,6 +13,7 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [GenerateReleaseFromSHA](GenerateReleaseFromSHA)
 * [install-postgres-client](install-postgres-client)
 * [SendToLogit](SendToLogit)
+* [set-arm-environment-variables](set-arm-environment-variables)
 * [set-up-environment](set-up-environment)
 * [setup-cf-cli](setup-cf-cli)
 * [turnstyle](turnstyle)
