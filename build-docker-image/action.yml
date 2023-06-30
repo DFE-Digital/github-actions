@@ -18,6 +18,11 @@ inputs:
     description: Relative path to the Dockerfile (Default = ./Dockerfile)
     default: ./Dockerfile
 
+outputs:
+  tag:
+    description: Docker image unique tag
+    value: ${{ steps.set-tag-output.outputs.tag }}
+
 runs:
   using: composite
   steps:
@@ -43,6 +48,12 @@ runs:
         GIT_BRANCH=${GITHUB_HEAD_REF##*/}
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
         echo "IMAGE_TAG=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+    - name: Set tag output
+      id: set-tag-output
+      shell: bash
+      run: |
+        echo "tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
 
     - name: Build docker image using cache
       uses: docker/build-push-action@v4
