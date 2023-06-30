@@ -13,6 +13,9 @@ Optionally (recommended) scan the image for vulnerabilities.
 - `reuse-cache`: Use previously built docker image layers to improve build time. Set to false to refresh image (Default = true)
 - `dockerfile-path`: Relative path to the Dockerfile (Default = ./Dockerfile)
 
+## Outputs
+- `tag`: Tag uniquely generated for this build (Currently long commit SHA)
+
 ## Example
 
 ```yaml
