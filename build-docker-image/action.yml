@@ -89,7 +89,7 @@ runs:
       uses: snyk/actions/docker@master
       if: inputs.snyk-token != ''
       env:
-        snyk_token: ${{ inputs.snyk-token }}
+        SNYK_TOKEN: ${{ inputs.snyk-token }}
       with:
         image: ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
         args: --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
