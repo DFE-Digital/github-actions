@@ -1,0 +1,88 @@
+name: Build docker image
+description: Build a docker image and push it to Github container registry
+
+inputs:
+  docker-repository:
+    description: Repository name in the container registry. e.g. ghcr.io/dfe-digital/register-trainee-teachers (Required)
+    required: true
+  github-token:
+    description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
+    required: true
+  snyk-token:
+    description: Snyk token for image vulnerability scanning (Default = none)
+  reuse-cache:
+    description: Use previously built docker image layers to improve build time. Set to false to refresh image (Default = true)
+    default: true
+    type: boolean
+  dockerfile-path:
+    description: Relative path to the Dockerfile (Default = ./Dockerfile)
+    default: ./Dockerfile
+
+runs:
+  using: composite
+  steps:
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ inputs.github-token }}
+
+    - name: Set environment variables (push)
+      if: github.event_name == 'push'
+      shell: bash
+      run: |
+        GIT_BRANCH=${GITHUB_REF##*/}
+        echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV # GIT_BRANCH will be main for refs/heads/main
+        echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+    - name: Set environment variables (pull_request)
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        GIT_BRANCH=${GITHUB_HEAD_REF##*/}
+        echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
+        echo "IMAGE_TAG=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+    - name: Build docker image using cache
+      uses: docker/build-push-action@v4
+      if: inputs.reuse-cache
+      with:
+        tags: |
+          ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
+          ${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
+        push: false
+        load: true
+        cache-to: type=inline
+        cache-from: |
+          type=registry,ref=${{ inputs.docker-repository }}:main
+          type=registry,ref=${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
+          type=registry,ref=${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
+        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        file: ${{ inputs.dockerfile-path }}
+
+    - name: Build docker image without reusing cache
+      uses: docker/build-push-action@v4
+      if: ${{! inputs.reuse-cache}}
+      with:
+        tags: |
+          ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
+          ${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
+        push: false
+        load: true
+        cache-to: type=inline
+        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        file: ${{ inputs.dockerfile-path }}
+
+    - name: Run Snyk to check Docker image for vulnerabilities
+      uses: snyk/actions/docker@master
+      if: inputs.snyk-token != ''
+      env:
+        snyk_token: ${{ inputs.snyk-token }}
+      with:
+        image: ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
+        args: --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
+
+    - name: Push ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }} image to registry
+      shell: bash
+      run: docker image push --all-tags ${{ inputs.docker-repository }}
