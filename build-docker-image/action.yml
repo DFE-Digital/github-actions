@@ -22,6 +22,9 @@ outputs:
   tag:
     description: Docker image unique tag
     value: ${{ steps.set-tag-output.outputs.tag }}
+  image:
+    describe: Reference to the built image name with the tag suitable for Kubernetes
+    value: ${{ inputs.docker-repository }}:${{ steps.set-tag-output.outputs.tag }}
 
 runs:
   using: composite

@@ -15,6 +15,7 @@ Optionally (recommended) scan the image for vulnerabilities.
 
 ## Outputs
 - `tag`: Tag uniquely generated for this build (Currently long commit SHA)
+- `image`: Reference to the built image suitable for use by Kubernetes (the docker repository combined with the tag)
 
 ## Example
 
