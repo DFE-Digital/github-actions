@@ -1,0 +1,22 @@
+name: Fetch Key Vault Secret
+description: Action to Fetch a Secret stored in Azure Key Vault
+inputs:
+  KEY_VAULT:
+    description: Name of the Key Vault the secrets are being stored
+    required: true
+  SECRET:
+    description: Name of Secret to fetch value from
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Fetch Key Vault Secret
+      id: keyvault-secret
+      shell: bash
+      run: |
+        SECRET_VALUE=$(az keyvault secret show --name "${{ inputs.SECRET }}" --vault-name "${{ inputs.KEY_VAULT }}" --query "value" -o tsv)
+        echo "::set-output name=secret::$SECRET_VALUE"
+outputs:
+  secret:
+    description: 'The fetched secret value'
+    value: ${{ steps.keyvault-secret.outputs.secret }}
