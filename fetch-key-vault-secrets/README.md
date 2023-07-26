@@ -3,8 +3,8 @@
 Fetch Secrets from the Azure Key vault taking Key Vault name and secret names as input.
 
 ## Inputs
-- `KEY_VAULT`: Name of the Key Vault containing the secrets (Required)
-- `SECRETS`: Comma separated secret names that are going to be fetched (Required)
+- `keyvault`: Name of the Key Vault containing the secrets (Required)
+- `secrets`: Comma separated secret names that are going to be fetched (Required)
 
 ## Outputs
 - `<secretname>`: Value of the secret
