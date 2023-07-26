@@ -1,0 +1,30 @@
+name: Fetch Key Vault Secrets
+
+description: Action to Fetch Secrets stored in Azure Key Vault
+
+inputs:
+  keyvault:
+    description: Name of the Key Vault the secrets are being stored
+    required: true
+
+  secrets:
+    description: Comma-separated list of secret names to fetch values from
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    - name: Fetch Key Vault Secrets
+      shell: bash
+      run: |
+        IFS=',' read -ra SECRET_NAMES <<< "${{ inputs.secrets }}"
+
+        for SECRET_NAME in "${SECRET_NAMES[@]}"; do
+          SECRET_VALUE=$(az keyvault secret show --name "$SECRET_NAME" --vault-name "${{ inputs.keyvault }}" --query "value" -o tsv)
+
+          echo "::add-mask::$SECRET_VALUE"
+
+          echo "$SECRET_NAME=$SECRET_VALUE" >> "$GITHUB_OUTPUT"
+
+        done
