@@ -10,6 +10,7 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [CheckServicePrincipal](CheckServicePrincipal)
 * [CopyPRtoRelease](CopyPRtoRelease)
 * [DraftReleaseByTag](DraftReleaseByTag)
+* [fetch-key-vault-secrets](fetch-key-vault-secrets)
 * [GenerateReleaseFromSHA](GenerateReleaseFromSHA)
 * [install-postgres-client](install-postgres-client)
 * [SendToLogit](SendToLogit)
