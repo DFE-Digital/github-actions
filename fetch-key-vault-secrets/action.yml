@@ -22,8 +22,9 @@ runs:
 
         for SECRET_NAME in "${SECRET_NAMES[@]}"; do
           SECRET_VALUE=$(az keyvault secret show --name "$SECRET_NAME" --vault-name "${{ inputs.keyvault }}" --query "value" -o tsv)
+          echo "MASKING $SECRET_VALUE"
           echo "::add-mask::$SECRET_VALUE"
-
+          echo "MASKED SECRET VALUE: $SECRET_VALUE"
           echo "::set-output name=${SECRET_NAME,,}:$SECRET_VALUE"
 
 
