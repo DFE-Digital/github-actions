@@ -25,6 +25,6 @@ runs:
 
           echo "::add-mask::$SECRET_VALUE"
 
-          echo "$SECRET_NAME=$SECRET_VALUE" >> "$GITHUB_OUTPUT"
+          echo "::set-output name=$SECRET_NAME::$SECRET_VALUE"
 
         done
