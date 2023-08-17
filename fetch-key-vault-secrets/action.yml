@@ -27,4 +27,6 @@ runs:
           echo "MASKED SECRET VALUE: $SECRET_VALUE"
           echo "$SECRET_NAME=$SECRET_VALUE" >> $GITHUB_OUTPUT
           echo "test=foo" >> $GITHUB_OUTPUT
+
+          cat $GITHUB_OUTPUT
         done
