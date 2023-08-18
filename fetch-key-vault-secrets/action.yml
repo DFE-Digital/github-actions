@@ -25,7 +25,7 @@ runs:
           # echo "MASKING $SECRET_VALUE"
           # echo "::add-mask::$SECRET_VALUE"
           # echo "MASKED SECRET VALUE: $SECRET_VALUE"
-          # echo "$SECRET_NAME=$SECRET_VALUE" >> $GITHUB_OUTPUT
+          # echo "$SECRET_NAME=$SECRET_VALUE" >> $GITHUB_ENV
           echo "test=foo" >> $GITHUB_OUTPUT
 
           cat $GITHUB_OUTPUT
