@@ -11,7 +11,8 @@ inputs:
     description: Comma-separated list of secret names to fetch values from
     required: true
 outputs:
-  # Dynamically generated outputs based on the secret names
+  secrets:
+    description: "The fetched secrets from Azure Key Vault. Actual output names will be based on the secret names provided in the 'secrets' input."
 
 runs:
   using: composite
