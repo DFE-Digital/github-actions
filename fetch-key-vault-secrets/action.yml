@@ -37,4 +37,10 @@ runs:
       id: set_outputs
       run: |
         # echo "::set-output name=secrets::$(cat outputs.txt)"
-        echo $(cat outputs.txt) >> $GITHUB_OUTPUT
+         # Read output file into outputs
+        outputs=$(cat outputs.txt)
+
+        # Set outputs variable
+        echo "outputs<<EOF" >> $GITHUB_OUTPUT
+        echo "$outputs" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
