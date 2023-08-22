@@ -13,6 +13,7 @@ inputs:
 outputs:
   secrets:
     description: "The fetched secrets from Azure Key Vault. Actual output names will be based on the secret names provided in the 'secrets' input."
+    value: ${{ steps.set_outputs.outputs.secrets }}
 
 runs:
   using: composite
@@ -20,11 +21,18 @@ runs:
   steps:
     - name: Fetch Key Vault Secrets
       shell: bash
+      id: fetch_secrets
       run: |
+        OUTPUT_FILE="outputs.txt"
         IFS=',' read -ra SECRET_NAMES <<< "${{ inputs.secrets }}"
 
         for SECRET_NAME in "${SECRET_NAMES[@]}"; do
           SECRET_VALUE=$(az keyvault secret show --name "$SECRET_NAME" --vault-name "${{ inputs.keyvault }}" --query "value" -o tsv)
           echo "::add-mask::$SECRET_VALUE"
-          echo "$SECRET_NAME="$SECRET_VALUE >> $GITHUB_OUTPUT
+          echo "$SECRET_NAME=$SECRET_VALUE" >> $OUTPUT_FILE
         done
+
+    - name: Set Outputs
+      id: set_outputs
+      run: |
+        echo "::set-output name=secrets::$(cat outputs.txt)"
