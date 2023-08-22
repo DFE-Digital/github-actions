@@ -23,17 +23,19 @@ runs:
       shell: bash
       id: fetch_secrets
       run: |
-        OUTPUT_FILE="outputs.txt"
+        # OUTPUT_FILE="outputs.txt"
         IFS=',' read -ra SECRET_NAMES <<< "${{ inputs.secrets }}"
 
         for SECRET_NAME in "${SECRET_NAMES[@]}"; do
           SECRET_VALUE=$(az keyvault secret show --name "$SECRET_NAME" --vault-name "${{ inputs.keyvault }}" --query "value" -o tsv)
           echo "::add-mask::$SECRET_VALUE"
-          echo "$SECRET_NAME=$SECRET_VALUE" >> $OUTPUT_FILE
+          echo "$SECRET_NAME=$SECRET_VALUE" >> $GITHUB_ENV
+          # echo "$SECRET_NAME=$SECRET_VALUE" >> $OUTPUT_FILE
+
         done
 
-    - name: Set Outputs
-      shell: bash
-      id: set_outputs
-      run: |
-        echo "::set-output name=secrets::$(cat outputs.txt)"
+    # - name: Set Outputs
+    #   shell: bash
+    #   id: set_outputs
+    #   run: |
+    #     echo "::set-output name=secrets::$(cat outputs.txt)"
