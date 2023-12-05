@@ -12,7 +12,7 @@ Optionally (recommended) scan the image for vulnerabilities.
 - `snyk-token`: Snyk token for image vulnerability scanning (Default = none)
 - `reuse-cache`: Use previously built docker image layers to improve build time. Set to false to refresh image (Default = true)
 - `dockerfile-path`: Relative path to the Dockerfile (Default = ./Dockerfile)
-
+- `context`: Path used as file context for Docker. If not set, an empty git repository is initialised using the same git reference as the workflow.
 ## Outputs
 - `tag`: Tag uniquely generated for this build (Currently long commit SHA)
 - `image`: Reference to the built image suitable for use by Kubernetes (the docker repository combined with the tag)
