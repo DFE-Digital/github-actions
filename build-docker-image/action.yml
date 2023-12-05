@@ -17,6 +17,10 @@ inputs:
   dockerfile-path:
     description: Relative path to the Dockerfile (Default = ./Dockerfile)
     default: ./Dockerfile
+  context:
+    description: Path used as file context for Docker. If not set, an empty git repository is initialised using the same git reference as the workflow.
+    default: ""
+    type: string
 
 outputs:
   tag:
@@ -74,6 +78,7 @@ runs:
           type=registry,ref=${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
+        context: ${{ inputs.context }}
 
     - name: Build docker image without reusing cache
       uses: docker/build-push-action@v4
@@ -87,6 +92,7 @@ runs:
         cache-to: type=inline
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
+        context: ${{ inputs.context }}
 
     - name: Run Snyk to check Docker image for vulnerabilities
       uses: snyk/actions/docker@master
