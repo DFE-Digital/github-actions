@@ -3,8 +3,8 @@ description: Build a docker image and push it to Github container registry
 
 inputs:
   docker-repository:
-    description: Repository name in the container registry. e.g. ghcr.io/dfe-digital/register-trainee-teachers (Required)
-    required: true
+    description: Repository name in the container registry. e.g. ghcr.io/dfe-digital/register-trainee-teachers. Defaults to current Github repository name.
+    default: ghcr.io/${{ github.repository }}
   github-token:
     description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
     required: true
@@ -18,7 +18,7 @@ inputs:
     description: Relative path to the Dockerfile (Default = ./Dockerfile)
     default: ./Dockerfile
   context:
-    description: Path used as file context for Docker. If not set, an empty git repository is initialised using the same git reference as the workflow.
+    description: Path used as file context for Docker. If not set, the git repository is cloned using the same git reference as the workflow and used as context.
     default: ""
     type: string
 
@@ -33,6 +33,12 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Ensure docker repository is lowercase
+      shell: pwsh
+      run: |
+        $DockerRepository = "${{ inputs.docker-repository }}".ToLower()
+        "DOCKER_REPOSITORY=$DockerRepository" | Out-File -FilePath $env:GITHUB_ENV -Append
+
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
       with:
@@ -67,26 +73,28 @@ runs:
       if: inputs.reuse-cache
       with:
         tags: |
-          ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
-          ${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
         push: false
         load: true
         cache-to: type=inline
         cache-from: |
-          type=registry,ref=${{ inputs.docker-repository }}:main
-          type=registry,ref=${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
-          type=registry,ref=${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
+        labels: |
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
     - name: Build docker image without reusing cache
       uses: docker/build-push-action@v4
       if: ${{! inputs.reuse-cache}}
       with:
         tags: |
-          ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
-          ${{ inputs.docker-repository }}:${{ env.BRANCH_TAG }}
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
         push: false
         load: true
         cache-to: type=inline
@@ -100,9 +108,9 @@ runs:
       env:
         SNYK_TOKEN: ${{ inputs.snyk-token }}
       with:
-        image: ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }}
+        image: ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
         args: --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
 
-    - name: Push ${{ inputs.docker-repository }}:${{ env.IMAGE_TAG }} image to registry
+    - name: Push ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} image to registry
       shell: bash
-      run: docker image push --all-tags ${{ inputs.docker-repository }}
+      run: docker image push --all-tags ${{ env.DOCKER_REPOSITORY }}
