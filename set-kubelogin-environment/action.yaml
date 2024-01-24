@@ -1,0 +1,26 @@
+name: Set ARM variables and kubelogin
+description: Sets the environment variables suitable for running Terraform and kubelogin to use with Azure RBAC enabled clusters
+
+inputs:
+  azure-credentials:
+    description: A JSON string containing service principle credentials.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set ARM variables
+      uses: DFE-Digital/github-actions/set-arm-environment-variables@925-rbac-migrate-clusters-development
+      with:
+        azure-credentials: ${{ inputs.azure-credentials }}
+
+    - name: Set up kubelogin
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: 'v0.0.33'
+
+    - name: Set kubelogin SPN variables
+      shell: bash
+      run: |
+        echo "AAD_SERVICE_PRINCIPAL_CLIENT_ID=$ARM_CLIENT_ID" >> $GITHUB_ENV
+        echo "AAD_SERVICE_PRINCIPAL_CLIENT_SECRET=$ARM_CLIENT_SECRET" >> $GITHUB_ENV
