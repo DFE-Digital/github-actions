@@ -15,6 +15,7 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [install-postgres-client](install-postgres-client)
 * [SendToLogit](SendToLogit)
 * [set-arm-environment-variables](set-arm-environment-variables)
+* [set-kubelogin-environment](set-kubelogin-environment)
 * [set-up-environment](set-up-environment)
 * [setup-cf-cli](setup-cf-cli)
 * [turnstyle](turnstyle)
