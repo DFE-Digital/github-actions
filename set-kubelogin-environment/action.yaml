@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Set ARM variables
-      uses: DFE-Digital/github-actions/set-arm-environment-variables@925-rbac-migrate-clusters-development
+      uses: DFE-Digital/github-actions/set-arm-environment-variables@master
       with:
         azure-credentials: ${{ inputs.azure-credentials }}
 
