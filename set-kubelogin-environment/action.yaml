@@ -15,7 +15,7 @@ runs:
         azure-credentials: ${{ inputs.azure-credentials }}
 
     - name: Set up kubelogin
-      uses: azure/use-kubelogin@v1
+      uses: azure/use-kubelogin@v1.2
       with:
         kubelogin-version: 'v0.0.33'
 
