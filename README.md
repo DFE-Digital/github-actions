@@ -18,6 +18,7 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [set-kubelogin-environment](set-kubelogin-environment)
 * [set-up-environment](set-up-environment)
 * [validate-key-vault-secrets](validate-key-vault-secrets)
+* [set-kubectl](set-kubectl)
 
 ### External actions
 
