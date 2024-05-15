@@ -62,6 +62,13 @@ runs:
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
         echo "IMAGE_TAG=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
 
+    - name: Set environment variables (default event)
+      if: github.event_name != 'push' && github.event_name != 'pull_request'
+      shell: bash
+      run: |
+        echo "BRANCH_TAG=main" >> $GITHUB_ENV
+        echo "IMAGE_TAG=$(date +%s)" >> $GITHUB_ENV
+
     - name: Set tag output
       id: set-tag-output
       shell: bash
