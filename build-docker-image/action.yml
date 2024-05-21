@@ -21,6 +21,8 @@ inputs:
     description: Path used as file context for Docker. If not set, the git repository is cloned using the same git reference as the workflow and used as context.
     default: ""
     type: string
+  target:
+    description: The target stage to build of a multi-stage build
 
 outputs:
   tag:
@@ -85,6 +87,7 @@ runs:
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
+        target: ${{ inputs.target }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
@@ -101,6 +104,7 @@ runs:
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
+        target: ${{ inputs.target }}
 
     - name: Run Snyk to check Docker image for vulnerabilities
       uses: snyk/actions/docker@master
