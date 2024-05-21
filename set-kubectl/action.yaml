@@ -7,4 +7,4 @@ runs:
     - name: Install kubectl
       uses: azure/setup-kubectl@v4
       with:
-        version: 'v1.27.7'
+        version: 'v1.27.9'
