@@ -19,6 +19,7 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [set-up-environment](set-up-environment)
 * [validate-key-vault-secrets](validate-key-vault-secrets)
 * [set-kubectl](set-kubectl)
+* [codeql-sast-reusable-workflow](codeql-sast-reusable-workflow)
 
 ### External actions
 

@@ -1,0 +1,41 @@
+name: DfE Security Defects Main Policy
+
+codescanning:
+  level: high
+  remediate:
+    critical: 10
+    high: 30
+    medium: 60 
+
+# Dependency Security Alerts
+dependabot:
+  level: high
+  remediate:
+    critical: 10
+    high: 30
+    moderate: 60 
+
+secretscanning:
+  level: all
+  remediate:
+    critical: 5
+
+# Dependency Licensing Alerts
+licensing:
+  conditions:
+    ids:
+      - GPL-*
+      - LGPL-*
+      - AGPL-*
+
+  warnings:
+    # Warning is the dependency isn't known
+    ids:
+      - Other
+      - NA
+
+dependencies:
+  conditions:
+    imports:
+      # Import text list of Typosquatting dependencies
+      names: .github/policy-as-code/typosquatting.txt
