@@ -1,0 +1,247 @@
+name: SAST - CodeQL Scan
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: The language used in the repository you're scanning. C#/.NET = 'csharp', JavaScript/TypeScript = 'javascript', ruby = 'ruby'
+        required: true
+        type: string
+      dotnet_version:
+        description: dotnet version
+        required: false
+        type: string
+      config_file:
+        description: path to a config file for codeql to read
+        required: false
+        type: string
+      nuget-source-url:
+        description: The url to the nuget source used by the project e.g. https://nuget.pkg.github.com/DfE-Digital/index.json
+        required: false
+        type: string
+      dotnet_project_locations:
+        description: csproj file locations for build
+        required: false
+        type: string
+        default: '["./"]'
+      dotnet_build_params:
+        description: dotnet build params
+        required: false
+        type: string
+      dotnet_clean:
+        description: run dotnet clean
+        required: false
+        type: boolean
+        default: false
+      dotnet_tool_restore:
+        description: Turn on tool restore where required
+        required: false
+        type: boolean
+        default: false
+      queries:
+        description: The queries CodeQL should run against the code. Options - security, security-and-quality, security-extended
+        required: false
+        type: string
+        default: "security-extended"
+      debug:
+        description: Set codeql debug true to help with debugging codeql specific issues
+        required: false
+        type: boolean
+        default: false
+      ref:
+        description: The fully-formed ref of the branch or tag that triggered the workflow run. If you're using a pull_request type closed, you may need to set this. Otherwise the default from github will be used.
+        required: false
+        type: string
+        default: '${{ github.ref }}'
+      sha:
+        description: The commit SHA that triggered the workflow.
+        required: false
+        type: string
+        default: '${{ github.sha }}'
+      policy_action:
+        description: "The action to take if policy-as-code checks fail thresholds options: ['break', 'continue']"
+        type: string
+        required: false
+        default: continue
+
+    secrets:
+      NUGET_AUTH_TOKEN:
+        description: This is the token required for Nuget to authenticate to the packages repository via the nuget-source-url if you're using a private repository
+        required: false
+      CODEQL_AUTHENTICATION_PRIVATE_KEY:
+        description: Private key used to authenticate as github app
+        required: false
+      CODEQL_APP_ID:
+        description: The app ID of the GitHub App used to authenticate with GHAS compliance.
+        required: false
+
+jobs:
+  run-codeql-sast:
+    name: CodeQL SAST
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      pull-requests: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        location: ${{ fromJSON(inputs.dotnet_project_locations) }}
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          queries: ${{ inputs.queries }}
+          config-file: ${{ inputs.config_file }}
+          languages: ${{ inputs.language }}
+          debug: ${{ inputs.debug }}
+        if: ${{ inputs.config_file != '' }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          queries: ${{ inputs.queries }}
+          languages: ${{ inputs.language }}
+          debug: ${{ inputs.debug }}
+        if: ${{ inputs.config_file == '' }}
+
+      - name: Setup dotnet ${{ inputs.dotnet_version }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet_version }}
+          source-url: ${{ inputs.nuget-source-url }}
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }} 
+        if: ${{ inputs.dotnet_version != '' }}
+
+      - name: Restore dotnet tools
+        run: dotnet tool restore
+        if: ${{ inputs.dotnet_tool_restore == true }}
+      
+      - name: dotnet clean
+        run: dotnet clean
+        if: ${{ inputs.dotnet_clean == true }}
+
+      - name: Build dotnet solution
+        run: dotnet build ${{ matrix.location }}
+        if: ${{ inputs.language == 'csharp' && inputs.dotnet_build_params == ''}}
+      
+      - name: Build dotnet solution with params
+        run: dotnet build ${{ matrix.location }} ${{ inputs.dotnet_build_params }}
+        if: ${{ inputs.language == 'csharp' && inputs.dotnet_build_params != '' }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          ref: ${{ inputs.ref }}
+          sha: ${{ inputs.sha }}
+          output: './results'
+
+      - name: Upload sarif artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'codeql-sarif-report'
+          path: '${{ github.workspace }}/results/*.sarif'
+          retention-days: ${{ inputs.retention_days }}
+        if: ${{ inputs.dotnet_project_locations == '["./"]' }}
+
+      - name: Remove slashes
+        id: remove-slashes
+        run: echo "report_name_suffix=$(echo ${{matrix.location}} | sed 's|/|-|g')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'codeql-sarif-report-${{ steps.remove-slashes.outputs.report_name_suffix }}'
+          path: '${{ github.workspace }}/results/*.sarif'
+          retention-days: 1
+        if: ${{ inputs.dotnet_project_locations != '["./"]' }}
+
+
+  Compliance:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    needs: [run-codeql-sast]
+
+    env:
+      CODEQL_AUTHENTICATION_PRIVATE_KEY: ${{ secrets.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
+
+    steps:
+
+      - name: Check repo visibility (GHAS currently not procured)
+        id: check-visibility
+        run: |
+          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }})
+          if [ $status_code -eq 200 ];
+          then
+            echo "visibility=public" >> "$GITHUB_OUTPUT"
+          else
+            echo "visibility=private" >> "$GITHUB_OUTPUT"
+          fi
+
+
+      - uses: actions/create-github-app-token@v1
+        if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY && steps.check-visibility.outputs.visibility == 'public' }}
+        id: app-token
+        with:
+          app-id: ${{ secrets.CODEQL_APP_ID }}
+          private-key: ${{ secrets.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}      
+
+
+      - name: Advance Security Compliance Action
+        if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY && steps.check-visibility.outputs.visibility == 'public' }}
+        uses: advanced-security/policy-as-code@v2.7.3
+        with:
+          # Set the severity levels which to set the threshold. All previous 
+          # severities are included so selecting 'error' also selects 'critical' and 
+          # 'high' along with 'error'.
+          severity: error
+
+          # Repository owner/name.
+          # This can be setup using a separate repository to the one being analysed 
+          #  for security compliance
+          repository: '${{ github.repository_owner }}/${{ github.event.repository.name }}'
+
+          # The owner/repo of where the policy is stored
+          # This generally is primarily used for a single repository that defines 
+          #  your organizations security policy
+          policy: pritchyspritch/dfe-github-actions
+
+          # The path where the policy lives. This might be in either the current 
+          #  repository or in a remote repository.
+          policy-path: .github/policy-as-code/ghas-policy.yml
+
+          # The branch you want to target using `policy` argument
+          policy-branch: master 
+
+          # GitHub Personal Access Token to access the GitHub API.
+          # Secret Scanning and Dependabot do not allow their resources to be
+          #  exposed to Actions so this might need to be set using a token that has 
+          #  the ability to access the resources
+          token: ${{ steps.app-token.outputs.token }}
+
+          policy-repo-token: ${{ steps.app-token.outputs.token }}
+
+          # [optional] GitHub reference, this is passed in by Actions at runtime
+          ref: ${{ inputs.ref }}
+
+          # [optional] What course of action to take upon discovering security issues that pass
+          # threshold?
+          action: ${{ inputs.policy_action }}
+
+          # [optional] Additional arguments
+          argvs: '--is-github-app-token --is-policy-github-app-token --display --pr-comment'
+
