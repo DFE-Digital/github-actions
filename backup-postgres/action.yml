@@ -1,0 +1,93 @@
+name: Backup postgres
+description: Backup an Azure postgres database
+inputs:
+  storage-account:
+    description: Name of the Azure storage account to store the backup
+    type: string
+    required: true
+  app-name:
+    description: Name of the app deployment
+    type: string
+    required: true
+  resource-group:
+    description: Name of the Azure resource group
+    type: string
+    required: true
+  cluster:
+    description: AKS cluster to use (test or production).
+    type: string
+    required: true
+  azure-credentials:
+    description: A JSON string containing service principle credentials.
+    required: true
+  environment:
+    description: App environment
+    required: true
+  backup-file:
+    description: Name of the backup file
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/login@v2
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Setup postgres client
+      uses: DFE-Digital/github-actions/install-postgres-client@master
+      with:
+        version: 14
+
+    - name: Install kubectl
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-credentials: ${{ inputs.azure-credentials }}
+
+    - name: Set up cluster environment variables
+      shell: bash
+      run: |
+        case ${{ inputs.cluster }} in
+          test)
+            echo "cluster_rg=s189t01-tsc-ts-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-test-aks" >> $GITHUB_ENV
+            ;;
+          production)
+            echo "cluster_rg=s189p01-tsc-pd-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189p01-tsc-production-aks" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "unknown cluster"
+            ;;
+        esac
+
+    - name: K8 setup
+      shell: bash
+      run: |
+        az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
+        kubelogin convert-kubeconfig -l spn
+        # install konduit
+        curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/master/scripts/konduit.sh -o bin/konduit.sh
+        chmod +x bin/konduit.sh
+
+    - name: Create compressed backup for aks env database
+      shell: bash
+      run: |
+        bin/konduit.sh -t 7200 ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
+
+    - name: Set Connection String
+      shell: bash
+      run: |
+        STORAGE_CONN_STR=$(az storage account show-connection-string -g ${{ inputs.resource-group }} -n ${{ inputs.storage-account }} --query 'connectionString')
+        echo "::add-mask::$STORAGE_CONN_STR"
+        echo "AZURE_STORAGE_CONNECTION_STRING=$STORAGE_CONN_STR" >> $GITHUB_ENV
+
+    - name: Upload Backup to Azure Storage
+      shell: bash
+      run: |
+        az config set extension.use_dynamic_install=yes_without_prompt
+        az config set core.only_show_errors=true
+        az storage azcopy blob upload --container database-backup \
+        --source ${{ inputs.backup-file }}.gz
