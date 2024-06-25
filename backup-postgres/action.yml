@@ -20,9 +20,6 @@ inputs:
   azure-credentials:
     description: A JSON string containing service principle credentials.
     required: true
-  environment:
-    description: App environment
-    required: true
   backup-file:
     description: Name of the backup file
     required: true

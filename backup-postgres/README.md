@@ -9,7 +9,6 @@ Mainly designed to be used in DR and DR test procedures
 - `app-name`: Name of the aks app deployment (Required)
 - `cluster`: AKS cluster to use, test or production (Required)
 - `azure-credentials`: A JSON string containing service principle credentials (Required)
-- `environment`: Application environment that containes the database (Required)
 - `backup-file`: Name of the backup file (Required)
 
 ## Example
@@ -29,6 +28,5 @@ jobs:
           app-name: myservice-qa
           cluster: test
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS}}
-          environment: qa
           backup-file: backup290224.sql
 ```
