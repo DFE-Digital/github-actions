@@ -62,7 +62,11 @@ on:
         type: string
         required: false
         default: continue
-
+      force_semgrep:
+        description: Force this workflow to use semgrep instead of codeql - codeql is the default option unless the repository is private, otherwise it falls back to semgrep.
+        type: boolean
+        required: false
+        default: false
     secrets:
       NUGET_AUTH_TOKEN:
         description: This is the token required for Nuget to authenticate to the packages repository via the nuget-source-url if you're using a private repository
@@ -75,9 +79,78 @@ on:
         required: false
 
 jobs:
-  run-codeql-sast:
-    name: CodeQL SAST
+  test-visibility:
+
+    name: Test repo visibility
     runs-on: ubuntu-latest
+
+    outputs:
+      visibility: ${{ steps.check-visibility.outputs.visibility }}
+
+    steps:
+
+      - name: Check repo visibility (GHAS currently not procured)
+        id: check-visibility
+        run: |
+          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }})
+          if [ $status_code -eq 200 ];
+          then
+            echo $status_code
+            visibility=public
+            echo "visibility=public" >> "$GITHUB_OUTPUT"
+          else
+            echo $status_code
+            echo "visibility=private" >> "$GITHUB_OUTPUT"
+            visibility=private
+          fi
+
+  semgrep:
+    name: semgrep-oss/scan
+    runs-on: ubuntu-latest
+
+    needs: test-visibility
+
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+
+    container:
+      # A Docker image with Semgrep installed. Do not change this.
+      image: semgrep/semgrep
+
+    if: ${{ (github.actor != 'dependabot[bot]') && (inputs.force_semgrep == true || needs.test-visibility.outputs.visibility == 'private') }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Run the "semgrep scan" command on the command line of the docker image.
+      - run: semgrep scan --config auto --sarif --sarif-output=semgrep.sarif --force-color
+
+      - name: Name sarif outputs
+        id: name-sarifs
+        # service: This variable creates a new name with the owner and repo name, makes it lowercase and replaces any of the following with underscores: / . - <space> 
+        # epoch: This variable echos the time in epoch
+        # The final line contatenates the epoch and name and outputs it to the GitHub environment so it can be used by the upload-artifacts step - naming convention is strict to ensure we don't break any steps
+        # The reasoning for this is so that we have unique naming (required for the next step), and so CISD tooling can track and collect the data based on naming convention
+        run: |
+          service=$(echo ${{ github.repository_owner }}_${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]' | sed -e 's|/|_|g' -e 's|\.|_|g' -e 's| |_|g' -e 's|-|_|g')
+          epoch=$(echo $EPOCHSECONDS)
+          echo report_name=$epoch"_"$service >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:  
+            name: ${{ steps.name-sarifs.outputs.report_name }}
+            path: ${{ github.workspace }}/semgrep.sarif
+        # Quotas being met
+        continue-on-error: true
+
+  run-codeql-sast:
+    name: CodeQL SAST (public repos)
+    runs-on: ubuntu-latest
+
+    needs: test-visibility
+
     permissions:
       actions: read
       contents: read
@@ -89,13 +162,14 @@ jobs:
       matrix:
         location: ${{ fromJSON(inputs.dotnet_project_locations) }}
 
+    if: ${{ (github.actor != 'dependabot[bot]') && (needs.test-visibility.outputs.visibility == 'public' && inputs.force_semgrep == false) }}
     steps:
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-
+        
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -144,24 +218,36 @@ jobs:
           ref: ${{ inputs.ref }}
           sha: ${{ inputs.sha }}
           output: './results'
+      
+      - name: Name sarif outputs
+        id: name-sarifs
+        run: |
+          service=$(echo ${{ github.repository_owner }}_${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]' | sed -e 's|/|_|g' -e 's|\.|_|g' -e 's| |_|g' -e 's|-|_|g')
+          epoch=$(echo $EPOCHSECONDS)
+          echo report_name=$epoch"_"$service >> "$GITHUB_OUTPUT"
+
 
       - name: Upload sarif artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 'codeql-sarif-report'
+          name: '${{ steps.name-sarifs.outputs.report_name }}'
           path: '${{ github.workspace }}/results/*.sarif'
-          retention-days: ${{ inputs.retention_days }}
+          retention-days: 1
+        # Quotas being met
+        continue-on-error: true
         if: ${{ inputs.dotnet_project_locations == '["./"]' }}
 
       - name: Remove slashes
         id: remove-slashes
-        run: echo "report_name_suffix=$(echo ${{matrix.location}} | sed 's|/|-|g')" >> "$GITHUB_OUTPUT"
+        run: echo "report_name_prefix=$(echo ${{matrix.location}} | sed -e 's|/|_|g' -e 's|\.|_|g' -e 's| |_|g' -e 's|-|_|g')" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: 'codeql-sarif-report-${{ steps.remove-slashes.outputs.report_name_suffix }}'
+          name: '${{ steps.remove-slashes.outputs.report_name_prefix }}_${{ steps.name-sarifs.outputs.report_name }}'
           path: '${{ github.workspace }}/results/*.sarif'
           retention-days: 1
+        # Quotas being met
+        continue-on-error: true
         if: ${{ inputs.dotnet_project_locations != '["./"]' }}
 
 
@@ -173,27 +259,16 @@ jobs:
       security-events: write
       pull-requests: write
 
-    needs: [run-codeql-sast]
+    needs: [run-codeql-sast, test-visibility]
 
     env:
       CODEQL_AUTHENTICATION_PRIVATE_KEY: ${{ secrets.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
 
+    if: ${{ needs.test-visibility.outputs.visibility == 'public' }}
     steps:
 
-      - name: Check repo visibility (GHAS currently not procured)
-        id: check-visibility
-        run: |
-          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }})
-          if [ $status_code -eq 200 ];
-          then
-            echo "visibility=public" >> "$GITHUB_OUTPUT"
-          else
-            echo "visibility=private" >> "$GITHUB_OUTPUT"
-          fi
-
-
       - uses: actions/create-github-app-token@v1
-        if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY && steps.check-visibility.outputs.visibility == 'public' }}
+        if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
         id: app-token
         with:
           app-id: ${{ secrets.CODEQL_APP_ID }}
@@ -202,7 +277,7 @@ jobs:
 
 
       - name: Advance Security Compliance Action
-        if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY && steps.check-visibility.outputs.visibility == 'public' }}
+        if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
         uses: advanced-security/policy-as-code@v2.7.3
         with:
           # Set the severity levels which to set the threshold. All previous 
@@ -218,7 +293,7 @@ jobs:
           # The owner/repo of where the policy is stored
           # This generally is primarily used for a single repository that defines 
           #  your organizations security policy
-          policy: pritchyspritch/dfe-github-actions
+          policy: DFE-Digital/github-actions
 
           # The path where the policy lives. This might be in either the current 
           #  repository or in a remote repository.
