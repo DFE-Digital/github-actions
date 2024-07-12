@@ -4,7 +4,7 @@ inputs:
   version:
     description: Postgres version
     required: true
-    default: '11'
+    default: '16'
 runs:
   using: composite
   steps:
@@ -12,6 +12,7 @@ runs:
     shell: bash
     id: install_postgres_client
     run: |
+      sudo apt-get --purge remove postgresql-client-14
       wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
       RELEASE=$(lsb_release -cs)
       echo "deb http://apt.postgresql.org/pub/repos/apt/ ${RELEASE}"-pgdg main | sudo tee  /etc/apt/sources.list.d/pgdg.list
@@ -19,3 +20,4 @@ runs:
       sudo apt-get update
       sudo apt-get install -y postgresql-client-"${{inputs.version}}"
       psql --version
+      pg_dump --version
