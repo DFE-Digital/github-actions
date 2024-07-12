@@ -9,7 +9,7 @@ Mainly designed to be used in DR and DR test procedures
 - `app-name`: Name of the aks app deployment (Required)
 - `cluster`: AKS cluster to use, test or production (Required)
 - `azure-credentials`: A JSON string containing service principle credentials (Required)
-- `backup-file`: Name of the backup file (Required)
+- `backup-file`: Name of the backup file. The file will be compressed and the .gz extension added to this name. (Required)
 
 ## Example
 
@@ -18,8 +18,7 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+
       - name: Backup postgres
         uses: DFE-Digital/github-actions/backup-postgres@master
         with:

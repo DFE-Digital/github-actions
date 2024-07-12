@@ -66,13 +66,13 @@ runs:
         az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
         kubelogin convert-kubeconfig -l spn
         # install konduit
-        curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/master/scripts/konduit.sh -o bin/konduit.sh
-        chmod +x bin/konduit.sh
+        curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/master/scripts/konduit.sh -o ./konduit.sh
+        chmod +x ./konduit.sh
 
     - name: Create compressed backup for aks env database
       shell: bash
       run: |
-        bin/konduit.sh -t 7200 ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
+        ./konduit.sh -t 7200 ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
 
     - name: Set Connection String
       shell: bash
