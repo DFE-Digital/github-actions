@@ -18,8 +18,7 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+
       - name: Restore postgres backup
         uses: DFE-Digital/github-actions/restore-postgres-backup@master
         with:

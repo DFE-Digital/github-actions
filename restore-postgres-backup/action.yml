@@ -20,7 +20,7 @@ inputs:
     description: A JSON string containing service principle credentials.
     required: true
   backup-file:
-    description: Name of the backup file to restore
+    description: Name of the backup file to restore. Must include the .gz extension if the remote file has it.
     required: true
 
 runs:
@@ -33,7 +33,7 @@ runs:
     - name: Setup postgres client
       uses: DFE-Digital/github-actions/install-postgres-client@master
       with:
-        version: 14
+        version: 16
 
     - name: Install kubectl
       uses: DFE-Digital/github-actions/set-kubectl@master
@@ -65,8 +65,8 @@ runs:
         az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
         kubelogin convert-kubeconfig -l spn
         # install konduit
-        curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/master/scripts/konduit.sh -o bin/konduit.sh
-        chmod +x bin/konduit.sh
+        curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/master/scripts/konduit.sh -o ./konduit.sh
+        chmod +x ./konduit.sh
 
     - name: Set Connection String
       shell: bash
@@ -88,7 +88,7 @@ runs:
       run: |
         COMPRESS=$( file --brief ${{ inputs.backup-file }} | grep -ic compressed || true )
         if [[ $COMPRESS -gt 0 ]]; then
-          bin/konduit.sh -i ${{ inputs.backup-file }} -c -t 7200 ${{ inputs.app-name }} -- psql
+          ./konduit.sh -i ${{ inputs.backup-file }} -c -t 7200 ${{ inputs.app-name }} -- psql
         else
-          bin/konduit.sh -i ${{ inputs.backup-file }} -t 7200 ${{ inputs.app-name }} -- psql
+          ./konduit.sh -i ${{ inputs.backup-file }} -t 7200 ${{ inputs.app-name }} -- psql
         fi
