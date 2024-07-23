@@ -88,7 +88,7 @@ runs:
       run: |
         COMPRESS=$( file --brief ${{ inputs.backup-file }} | grep -ic compressed || true )
         if [[ $COMPRESS -gt 0 ]]; then
-          ./konduit.sh -i ${{ inputs.backup-file }} -c -t 7200 ${{ inputs.app-name }} -- psql
+          ./konduit.sh -i ${{ inputs.backup-file }} -c -t 7200 -x ${{ inputs.app-name }} -- psql
         else
-          ./konduit.sh -i ${{ inputs.backup-file }} -t 7200 ${{ inputs.app-name }} -- psql
+          ./konduit.sh -i ${{ inputs.backup-file }} -t 7200 -x ${{ inputs.app-name }} -- psql
         fi
