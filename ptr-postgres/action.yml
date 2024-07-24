@@ -1,0 +1,74 @@
+name: PTR postgres
+description: Azure postgres database point in time restore
+inputs:
+  resource-group:
+    description: Name of the Azure postgres server resource group
+    type: string
+    required: true
+  source-server:
+    description: Name of the Azure database server we are restoring from
+    type: string
+    required: true
+  new-server:
+    description: Name of the Azure database server we are restoring to
+    type: string
+    required: true
+  restore-time:
+    description: point in time to be restored, format YYYY-MM-DDTHH:MM:SS e.g. 2024-07-24T06:00:00
+    type: string
+    required: true
+  cluster:
+    description: Cluster being used. test or production.
+    required: true
+  azure-credentials:
+    description: A JSON string containing service principal credentials.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/login@v2
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Set up cluster environment variables
+      shell: bash
+      run: |
+        case ${{ inputs.cluster }} in
+          test)
+            echo "cluster_rg=s189t01-tsc-ts-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-test-aks" >> $GITHUB_ENV
+            echo "db_vnet=s189t01-tsc-test-vnet" >> $GITHUB_ENV
+            echo "db_dns_zone=test.internal.postgres.database.azure.com" >> $GITHUB_ENV
+            echo "db_dns_rg=s189t01-tsc-test-bs-rg" >> $GITHUB_ENV
+            ;;
+          production)
+            echo "cluster_rg=s189p01-tsc-pd-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189p01-tsc-production-aks" >> $GITHUB_ENV
+            echo "db_vnet=s189p01-tsc-production-vnet" >> $GITHUB_ENV
+            echo "db_dns_zone=production.internal.postgres.database.azure.com" >> $GITHUB_ENV
+            echo "db_dns_rg=s189p01-tsc-production-bs-rg" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "unknown cluster"
+            ;;
+        esac
+        echo "db_subnet=postgres-snet" >> $GITHUB_ENV
+
+    - name: Get vnet id
+      shell: bash
+      run: |
+        SNET_ID=$(az network vnet subnet list --resource-group ${{ env.cluster_rg }} --vnet-name ${{ env.db_vnet }} --query "[?name=='${{ env.db_subnet }}'].id" -o tsv)
+        echo "::add-mask::$SNET_ID"
+        echo "SNET_ID=$SNET_ID" >> $GITHUB_ENV
+        DNS_ID=$(az network private-dns zone list --resource-group ${{ env.db_dns_rg }} --query "[?name=='${{ env.db_dns_zone }}'].id" -o tsv)
+        echo "::add-mask::$DNS_ID"
+        echo "DNS_ID=$DNS_ID" >> $GITHUB_ENV
+
+    - name: Run PTR
+      shell: bash
+      run: |
+        az postgres flexible-server restore --resource-group ${{ inputs.resource-group }} --name ${{ inputs.new-server }} --source-server ${{ inputs.source-server }} --subnet ${{ env.SNET_ID }}  --private-dns-zone ${{ env.DNS_ID }} --restore-time ${{ inputs.restore-time }} --output none
+
+# create a backup? optional, could be used in restore step.
+# optionally just backup a table or tables?
