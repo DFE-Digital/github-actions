@@ -10,6 +10,7 @@ Mainly designed to be used in DR and DR test procedures
 - `cluster`: AKS cluster to use, test or production (Required)
 - `azure-credentials`: A JSON string containing service principle credentials (Required)
 - `backup-file`: Name of the backup file. The file will be compressed and the .gz extension added to this name. (Required)
+- `ptr-db-server-name` : For use if backing up a point in time restored server (Optional)
 
 ## Example
 
