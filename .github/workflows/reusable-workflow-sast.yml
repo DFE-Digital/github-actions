@@ -129,14 +129,9 @@ jobs:
 
       - name: Name sarif outputs
         id: name-sarifs
-        # service: This variable creates a new name with the owner and repo name, makes it lowercase and replaces any of the following with underscores: / . - <space> 
-        # epoch: This variable echos the time in epoch
-        # The final line contatenates the epoch and name and outputs it to the GitHub environment so it can be used by the upload-artifacts step - naming convention is strict to ensure we don't break any steps
-        # The reasoning for this is so that we have unique naming (required for the next step), and so CISD tooling can track and collect the data based on naming convention
+        # Naming convention to create unique IDs to avoid clashes with matrices = 'JOBID_JOBNUMBER_semgrep'. Additional _semgrep to allow us to identify artifacts we want to review.
         run: |
-          service=$(echo ${{ github.repository_owner }}_${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]' | sed -e 's|/|_|g' -e 's|\.|_|g' -e 's| |_|g' -e 's|-|_|g')
-          epoch=$(echo $EPOCHSECONDS)
-          echo report_name=$epoch"_"$service >> "$GITHUB_OUTPUT"
+          echo report_name=${{ github.run_id }}_${{ github.run_number }}_semgrep >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:  
