@@ -78,7 +78,7 @@ runs:
         echo "tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
 
     - name: Build docker image using cache
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       if: inputs.reuse-cache
       with:
         tags: |
@@ -99,7 +99,7 @@ runs:
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
     - name: Build docker image without reusing cache
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       if: ${{! inputs.reuse-cache}}
       with:
         tags: |
