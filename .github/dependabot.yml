@@ -15,6 +15,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/AddTrelloComment"
@@ -31,6 +34,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/backup-postgres"
@@ -47,6 +53,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/build-docker-image"
@@ -63,6 +72,10 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
+
   - package-ecosystem: "github-actions"
     directory: "/CheckServicePrincipal"
     schedule:
@@ -78,6 +91,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/CopyPRtoRelease"
@@ -94,6 +110,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
           
   - package-ecosystem: "github-actions"
     directory: "/DraftReleaseByTag"
@@ -110,6 +129,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/GenerateReleaseFromSHA"
@@ -126,6 +148,10 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
+
   - package-ecosystem: "github-actions"
     directory: "/install-postgres-client"
     schedule:
@@ -141,6 +167,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/ptr-postgres"
@@ -157,6 +186,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
           
   - package-ecosystem: "github-actions"
     directory: "/restore-postgres-backup"
@@ -173,6 +205,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/SendToLogit"
@@ -189,6 +224,10 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
+
   - package-ecosystem: "github-actions"
     directory: "/set-arm-environment-variables"
     schedule:
@@ -204,6 +243,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/set-kubectl"
@@ -220,6 +262,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
           
   - package-ecosystem: "github-actions"
     directory: "/set-kubelogin-environment"
@@ -236,6 +281,9 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/set-up-environment"
@@ -252,6 +300,10 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
+
   - package-ecosystem: "github-actions"
     directory: "/validate-key-vault-secrets"
     schedule:
@@ -267,3 +319,6 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    labels:
+      - "DevOps"
+      - "dependencies"
