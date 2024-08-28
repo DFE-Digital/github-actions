@@ -18,7 +18,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: Azure/login@v1
+    - uses: Azure/login@v2
       with:
         creds: ${{ inputs.AzureCredentials }}
     - name: Get Expiry Date
