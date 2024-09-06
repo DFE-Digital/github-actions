@@ -78,7 +78,7 @@ runs:
         echo "tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
 
     - name: Build docker image using cache
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       if: inputs.reuse-cache
       with:
         tags: |
@@ -97,9 +97,11 @@ runs:
         target: ${{ inputs.target }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+      env:
+        DOCKER_BUILD_RECORD_UPLOAD: false
 
     - name: Build docker image without reusing cache
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       if: ${{! inputs.reuse-cache}}
       with:
         tags: |
@@ -112,6 +114,8 @@ runs:
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
+      env:
+        DOCKER_BUILD_RECORD_UPLOAD: false
 
     - name: Run Snyk to check Docker image for vulnerabilities
       uses: snyk/actions/docker@master
