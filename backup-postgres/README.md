@@ -1,7 +1,7 @@
-# Backup Postgres
+# Back up Postgres
 
-Backup an Azure Postgresql server database and upload the backup file to an Azure storage account
-Mainly designed to be used in DR and DR test procedures
+Back up an Azure Postgresql server database and upload the backup file to an Azure storage account
+Designed for scheduled backups as well as disaster recovery procedures
 
 ## Inputs
 - `storage-account`: Name of the Azure storage account for the backup (Required)
@@ -10,7 +10,7 @@ Mainly designed to be used in DR and DR test procedures
 - `cluster`: AKS cluster to use, test or production (Required)
 - `azure-credentials`: A JSON string containing service principle credentials (Required)
 - `backup-file`: Name of the backup file. The file will be compressed and the .gz extension added to this name. (Required)
-- `ptr-db-server-name` : For use if backing up a point in time restored server (Optional)
+- `db-server-name` : Alternate database server (Optional)
 
 ## Example
 
