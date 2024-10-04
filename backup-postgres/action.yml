@@ -23,8 +23,9 @@ inputs:
   backup-file:
     description: Name of the backup file
     required: true
-  ptr-db-server-name:
-    description: Name of the PTR postgres server
+  db-server-name:
+    description: |
+      Name of the database server. Default is the live server. When backing up a point-in-time (PTR) server, use the full name of the PTR server. (Optional)
     required: false
 
 runs:
@@ -75,8 +76,8 @@ runs:
     - name: Create compressed backup for aks env database
       shell: bash
       run: |
-        if [[ -n "${{ inputs.ptr-db-server-name }}" ]]; then
-          ./konduit.sh -s ${{ inputs.ptr-db-server-name }} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
+        if [[ -n "${{ inputs.db-server-name }}" ]]; then
+          ./konduit.sh -s ${{ inputs.db-server-name }} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
         else
           ./konduit.sh -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
         fi
