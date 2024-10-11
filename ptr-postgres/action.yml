@@ -70,5 +70,13 @@ runs:
       run: |
         az postgres flexible-server restore --resource-group ${{ inputs.resource-group }} --name ${{ inputs.new-server }} --source-server ${{ inputs.source-server }} --subnet ${{ env.SNET_ID }}  --private-dns-zone ${{ env.DNS_ID }} --restore-time ${{ inputs.restore-time }} --output none
 
-# create a backup? optional, could be used in restore step.
-# optionally just backup a table or tables?
+    - name: Restore Summary
+      if: success()
+      shell: bash
+      run: |
+        NOW=$(TZ=Europe/London date +"%F %R")
+        echo 'RESTORE SUCCESSFUL!' >> $GITHUB_STEP_SUMMARY
+        echo "  AT : ${NOW}" >> $GITHUB_STEP_SUMMARY
+        echo '  SOURCE SERVER: ${{ inputs.source-server }}' >> $GITHUB_STEP_SUMMARY
+        echo '  RESTORED SERVER: ${{ inputs.new-server }}' >> $GITHUB_STEP_SUMMARY
+        echo '  RESTORE POINT: ${{ inputs.restore-time }} UTC' >> $GITHUB_STEP_SUMMARY

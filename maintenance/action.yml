@@ -1,0 +1,67 @@
+name: Maintenance
+description: Enable or disable maintenance for a service
+inputs:
+  environment:
+    description: Name of the app environment
+    type: string
+    required: true
+  azure-credentials:
+    description: A JSON string containing service principle credentials.
+    required: true
+  mode:
+    description: Maintenance mode to implement, either enable or disable
+    required: true
+  docker-repository:
+    description: Name of the maint app docker repository
+    required: false
+  github-token:
+    description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/login@v2
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Set ARM and kubelogin environment
+      uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-credentials: ${{ inputs.AZURE_CREDENTIALS }}
+
+    - name: Build and push docker image
+      if: inputs.mode == 'enable'
+      id: build-image
+      uses: DFE-Digital/github-actions/build-docker-image@master
+      with:
+        github-token: ${{ inputs.github-token }}
+        dockerfile-path: maintenance_page/Dockerfile
+        docker-repository: inputs.docker-repository
+        context: maintenance_page
+
+    - name: Enable maintenance mode
+      if: inputs.mode == 'enable'
+      shell: bash
+      run: make ${{ inputs.environment }} maintenance-fail-over
+      env:
+        MAINTENANCE_IMAGE_TAG: ${{steps.build-image.outputs.tag}}
+
+    - name: Disable maintenance mode
+      if: inputs.mode == 'disable'
+      shell: bash
+      run: make ${{ inputs.environment }} disable-maintenance
+
+    - name: Maintenance Summary
+      if: success()
+      shell: bash
+      run: |
+        NOW=$(TZ=Europe/London date +"%F %R")
+        echo 'MAINTENANCE PAGE ${{ inputs.mode }}d!' >> $GITHUB_STEP_SUMMARY
+        echo 'ENV: ${{ inputs.environment }}' >> $GITHUB_STEP_SUMMARY
+        echo "AT : ${NOW}" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ inputs.mode }}" == "enable" ]]; then
+          TEMP_URLS=$(awk '/name:.*cloud/ {print $2}' ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml)
+          echo 'TEMP URLS:' >> $GITHUB_STEP_SUMMARY
+          echo "${TEMP_URLS}" >> $GITHUB_STEP_SUMMARY
+        fi

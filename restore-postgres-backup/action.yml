@@ -92,3 +92,13 @@ runs:
         else
           ./konduit.sh -i ${{ inputs.backup-file }} -t 7200 -x ${{ inputs.app-name }} -- psql
         fi
+
+    - name: Restore Summary
+      if: success()
+      shell: bash
+      run: |
+        NOW=$(TZ=Europe/London date +"%F %R")
+        echo 'RESTORE SUCCESSFUL!' >> $GITHUB_STEP_SUMMARY
+        echo '  APP: ${{ inputs.app-name }}' >> $GITHUB_STEP_SUMMARY
+        echo '  BACKUP FILE RESTORED: ${{ inputs.storage-account }} / database-backup / ${{ inputs.backup-file }}' >> $GITHUB_STEP_SUMMARY
+        echo "  AT : ${NOW}" >> $GITHUB_STEP_SUMMARY
