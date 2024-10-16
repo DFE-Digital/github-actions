@@ -10,6 +10,7 @@ Designed for scheduled backups as well as disaster recovery procedures
 - `cluster`: AKS cluster to use, test or production (Required)
 - `azure-credentials`: A JSON string containing service principle credentials (Required)
 - `backup-file`: Name of the backup file. The file will be compressed and the .gz extension added to this name. (Required)
+- `slack-webhook`: A slack webhook to send a slack message to the service tech channel (Required)
 - `db-server-name` : Alternate database server (Optional)
 
 ## Example
@@ -27,6 +28,7 @@ jobs:
           resource-group: s189t01-app-rg
           app-name: myservice-qa
           cluster: test
-          azure-credentials: ${{ secrets.AZURE_CREDENTIALS}}
+          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           backup-file: backup290224.sql
+          slack-webhook: ${{ env.slack-webhook }}
 ```
