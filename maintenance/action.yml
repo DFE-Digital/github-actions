@@ -28,7 +28,7 @@ runs:
     - name: Set ARM and kubelogin environment
       uses: DFE-Digital/github-actions/set-kubelogin-environment@master
       with:
-        azure-credentials: ${{ inputs.AZURE_CREDENTIALS }}
+        azure-credentials: ${{ inputs.azure-credentials }}
 
     - name: Build and push docker image
       if: inputs.mode == 'enable'
