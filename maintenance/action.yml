@@ -37,7 +37,7 @@ runs:
       with:
         github-token: ${{ inputs.github-token }}
         dockerfile-path: maintenance_page/Dockerfile
-        docker-repository: inputs.docker-repository
+        docker-repository: ${{ inputs.docker-repository }}
         context: maintenance_page
 
     - name: Enable maintenance mode
