@@ -30,6 +30,7 @@ A service that uses this action with reuse-cache = true, should also have a cach
 - `target`: The target stage to build of a multi-stage build
 - `docker-repository`: Repository name in the container registry. e.g. ghcr.io/dfe-digital/register-trainee-teachers. Defaults to current Github repository name.
 - `max-cache`: Set to true to use maximum cache level when reuse-cache is set. Defaults to minimum (false)
+- `slack-webhook`:  A slack webhook to send a slack message to the service tech channel (Optional)
 
 ## Outputs
 - `tag`: Tag uniquely generated for this build (Currently long commit SHA)
