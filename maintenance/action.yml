@@ -43,14 +43,14 @@ runs:
     - name: Enable maintenance mode
       if: inputs.mode == 'enable'
       shell: bash
-      run: make ${{ inputs.environment }} maintenance-fail-over
+      run: make ci ${{ inputs.environment }} maintenance-fail-over
       env:
         MAINTENANCE_IMAGE_TAG: ${{steps.build-image.outputs.tag}}
 
     - name: Disable maintenance mode
       if: inputs.mode == 'disable'
       shell: bash
-      run: make ${{ inputs.environment }} disable-maintenance
+      run: make ci ${{ inputs.environment }} disable-maintenance
 
     - name: Maintenance Summary
       if: success()

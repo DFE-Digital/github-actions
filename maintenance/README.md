@@ -2,6 +2,8 @@
 
 Enable or disable maintenance mode for a service
 
+The action relies on make commands defined in the [new_service template](https://github.com/DFE-Digital/teacher-services-cloud/tree/main/templates/new_service).
+
 ## Inputs
 - `environment`: Name of the app environment affected (Required)
 - `azure-credentials`: A JSON string containing service principle credentials (Required)
