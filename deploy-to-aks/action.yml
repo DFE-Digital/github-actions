@@ -1,0 +1,154 @@
+name: Deploy to AKS environment
+description: Deploy a docker image to an AKS environment
+
+inputs:
+  azure-credentials:
+    description: A JSON string containing service principal credentials.
+    required: true
+  gcp-wip:
+    description: The full identifier of the GCP Workload Identity Provider.
+    required: false
+  gcp-project-id:
+    description: The name of the GCP Project ID.
+    required: false
+  environment:
+    description: Environment to deploy to
+    required: true
+  pr-number:
+    description: PR number for the review app
+    required: false
+  sha:
+    description: Commit sha to be deployed
+    required: true
+  slack-webhook:
+    description: Name of the slack webhook
+    required: false
+  db-seed:
+    description: Run seed command after a deployment. Normally only used for review apps.
+    type: boolean
+    required: false
+    default: false
+  smoke-test:
+    description: Enable smoke test after deployment
+    type: boolean
+    required: false
+    default: false
+  healthcheck:
+    description: Health check path
+    required: false
+  terraform-base:
+    description: Path to the terraform files
+    required: false
+    default: 'terraform/application'
+
+outputs:
+  environment_url:
+    description: The first external URL for the deployed environment
+    value: ${{ steps.set_output.outputs.ENVIRONMENT_URL }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set Environment variables
+      id: set_env_var
+      shell: bash
+      run: |
+        terraform_version=$(awk '/{/{f=/^terraform/;next}f' ${{ inputs.terraform-base }}/terraform.tf | grep -o [0-9\.]*)
+        echo "TERRAFORM_VERSION=$terraform_version" >> $GITHUB_ENV
+
+    - name: Use Terraform ${{ env.TERRAFORM_VERSION }}
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+
+    - uses: azure/login@v2
+      if: ${{ inputs.db-seed == 'true' }}
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - uses: google-github-actions/auth@v2
+      if: ${{ inputs.gcp-wip != '' }}
+      with:
+        project_id: ${{ inputs.gcp-project-id }}
+        workload_identity_provider: ${{ inputs.gcp-wip }}
+
+    - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-credentials: ${{ inputs.azure-credentials }}
+
+    - name: Terraform apply
+      shell: bash
+      run: make ${{ inputs.environment }} ci terraform-apply
+      env:
+        DOCKER_IMAGE_TAG: ${{ inputs.sha }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+
+    - name: Install kubectl
+      if: ${{ ( inputs.db-seed == 'true' && inputs.environment == 'review' ) }}
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - name: Seed review app
+      shell: bash
+      if: ${{ inputs.db-seed == 'true' }}
+      run: make ci ${{ inputs.environment }} db-seed
+      env:
+        PR_NUMBER: ${{ inputs.pr-number }}
+
+    - name: set DEPLOY_URL output
+      shell: bash
+      id: set_output
+      run: |
+        first_url=$(terraform -chdir=${{ inputs.terraform-base }} output -json external_urls | jq -r '.[0]')
+        echo "ENVIRONMENT_URL=${first_url}" >> $GITHUB_OUTPUT
+
+    - name: Run healthcheck
+      if: ${{ inputs.healthcheck != '' }}
+      shell: bash
+      run: |
+        external_urls=$(terraform -chdir=${{ inputs.terraform-base }} output -json external_urls | jq -r '.[]')
+        for url in $external_urls; do
+          echo "Check health for $url/${{ inputs.healthcheck }}..."
+          curl -sS --fail "$url/${{ inputs.healthcheck }}" > /dev/null
+        done
+        if [ ${{ inputs.pr-number }} != '' ]; then
+          echo "URLS<<EOF" >> $GITHUB_ENV
+          for url in $external_urls; do
+            echo $url >> $GITHUB_ENV
+          done
+          echo "EOF" >> $GITHUB_ENV
+        fi
+
+    - name: Post comment to Pull Request ${{ inputs.pr-number }}
+      if: inputs.pr-number != ''
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: aks
+        message: |
+          ### Deployments
+
+          | Review app is available at these URLs:                                                                                     |
+          | ---------------------------------------------------------------------------------------- |
+          | ${{ env.URLS }} |
+
+    - name: Run smoke test
+      shell: bash
+      if: ${{ inputs.smoke-test == 'true' }}
+      env:
+        PR_NUMBER: ${{ inputs.pr-number }}
+      run: |
+        make ci ${{ inputs.environment }} smoke-test
+
+    - name: Notify Slack channel on job failure
+      if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.slack-webhook != '' }}
+      uses: rtCamp/action-slack-notify@master
+      env:
+        SLACK_USERNAME: CI Deployment
+        SLACK_TITLE: Deployment failure
+        SLACK_MESSAGE: ${{ inputs.environment }} deployment job failed
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+        SLACK_COLOR: failure
+        SLACK_FOOTER: Sent from deploy-to-aks

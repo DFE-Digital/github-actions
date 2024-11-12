@@ -28,6 +28,8 @@ inputs:
     default: false
     type: boolean
     required: false
+  slack-webhook:
+    required: false
 
 outputs:
   tag:
@@ -181,3 +183,15 @@ runs:
     - name: Push ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} image to registry
       shell: bash
       run: docker image push --all-tags ${{ env.DOCKER_REPOSITORY }}
+
+    - name: Notify slack channel on job failure
+      uses: rtCamp/action-slack-notify@master
+      if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.slack-webhook != '' }}
+      with:
+        SLACK_USERNAME: CI Deployment
+        SLACK_COLOR: failure
+        SLACK_ICON_EMOJI: ':github-logo:'
+        SLACK_TITLE: 'Build failure'
+        SLACK_MESSAGE: ':alert: Build failure on commit ${{env.IMAGE_TAG}} :sadparrot:'
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+        SLACK_FOOTER: Sent from build-docker-image
