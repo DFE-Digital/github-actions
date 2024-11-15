@@ -1,0 +1,118 @@
+name: Delete Review App
+description: Delete Review App
+inputs:
+  azure-credentials:
+    description: A JSON string containing service principal credentials.
+    required: true
+  container-name:
+    description: azure container-name containing terraform state file
+    required: false
+    default: "terraform-state"
+  gcp-wip:
+    description: The full identifier of the GCP Workload Identity Provider.
+    required: false
+  gcp-project-id:
+    description: The name of the GCP Project ID.
+    required: false
+  pr-number:
+    description: PR number for the review app
+    required: true
+  resource-group-name:
+    description: azure resource group
+    required: true
+  storage-account-name:
+    description: azure storage account containing terraform state file
+    required: true
+  terraform-base:
+    description: Path to the terraform files
+    required: false
+    default: "terraform/application"
+  tf-state-file:
+    description: name of file containing terraform state
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set terraform version
+      id: set_env_var
+      shell: bash
+      run: |
+        terraform_version=$(awk '/{/{f=/^terraform/;next}f' ${{ inputs.terraform-base }}/terraform.tf | grep -o [0-9\.]*)
+        echo "TERRAFORM_VERSION=$terraform_version" >> $GITHUB_ENV
+
+    - name: Use Terraform ${{ env.TERRAFORM_VERSION }}
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+
+    - uses: azure/login@v2
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - uses: google-github-actions/auth@v2
+      if: ${{ inputs.gcp-wip != '' }}
+      with:
+        project_id: ${{ inputs.gcp-project-id }}
+        workload_identity_provider: ${{ inputs.gcp-wip }}
+
+    - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-credentials: ${{ inputs.azure-credentials }}
+
+    - name: Terraform Destroy
+      shell: bash
+      run: |
+        make ci review terraform-destroy
+      env:
+        PR_NUMBER: ${{ inputs.pr-number }}
+
+    - name: Post Pull Request Comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: aks
+        message: |
+          Review app for PR ${{ inputs.pr-number }} was deleted
+
+    - name: Install Storage Blob Extension
+      shell: bash
+      run: az extension add --name storage-blob-preview
+
+    - name: Set Container Access Key
+      shell: bash
+      run: |
+        TFSTATE_CONTAINER_ACCESS_KEY="$(az storage account keys list -g ${{ inputs.resource-group-name }} -n ${{ inputs.storage-account-name }} | jq -r '.[0].value')"
+        echo "::add-mask::$TFSTATE_CONTAINER_ACCESS_KEY"
+        echo "TFSTATE_CONTAINER_ACCESS_KEY=$TFSTATE_CONTAINER_ACCESS_KEY" >> $GITHUB_ENV
+
+    - name: Test for tf state file
+      shell: bash
+      run: |
+        pr_state_file="$(az storage blob list -c ${{ inputs.container-name }} --account-key ${{ env.TFSTATE_CONTAINER_ACCESS_KEY }} --account-name ${{ inputs.storage-account-name }} --prefix ${{ inputs.tf-state-file }} --query '[].name' -o tsv)"
+        if [ -n "$pr_state_file" ]; then
+          echo "TF_STATE_EXISTS=true" >> $GITHUB_ENV
+        fi
+
+    - name: Delete tf state file
+      if: env.TF_STATE_EXISTS == 'true'
+      shell: bash
+      run: |
+        versions="$(az storage blob list --account-name ${{ inputs.storage-account-name }} -c ${{ inputs.container-name }} --prefix ${{ inputs.tf-state-file }} --include v --query '[].versionId' -o tsv)"
+        SAVEIFS=$IFS   # Save current IFS (Internal Field Separator)
+        IFS=$'\n'      # Change IFS to newline char
+        versions=($versions) # split the string into an array by the same name
+        IFS=$SAVEIFS
+        az storage blob delete -c ${{ inputs.container-name }} --name ${{ inputs.tf-state-file }} \
+          --account-key ${{ env.TFSTATE_CONTAINER_ACCESS_KEY }} \
+          --account-name ${{ inputs.storage-account-name }}
+        for i in "${versions[@]}"
+        do
+          echo "Deleting Storage ${{ inputs.tf-state-file }} version $i"
+          az storage blob delete -c ${{ inputs.container-name }} --name ${{ inputs.tf-state-file }} --version-id $i \
+          --account-key ${{ env.TFSTATE_CONTAINER_ACCESS_KEY }} \
+          --account-name ${{inputs.storage-account-name }}
+        done
