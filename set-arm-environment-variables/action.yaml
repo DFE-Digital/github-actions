@@ -21,14 +21,14 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Error 1
+    - name: Error - Azure inputs not empty
       if: inputs.azure-credentials != '' && (inputs.azure-client-id != '' || inputs.azure-subscription-id != '' || inputs.azure-tenant-id != '')
       shell: pwsh
       run: |
-        Write-Error "You must provide either azure-credentials or azure-client-id, azure-subscription-id and azure-tenant-id"
+        Write-Error "You must provide either azure-credentials or all of: azure-client-id, azure-subscription-id and azure-tenant-id"
         exit 1
 
-    - name: Error 2
+    - name: Error 2 - Azure inputs empty
       if: inputs.azure-credentials == '' && (inputs.azure-client-id == '' || inputs.azure-subscription-id == '' || inputs.azure-tenant-id == '')
       shell: pwsh
       run: |
