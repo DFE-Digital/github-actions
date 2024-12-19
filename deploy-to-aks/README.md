@@ -8,8 +8,14 @@ Optionally after deployment
 
 If using Google Cloud then GCP_PROJECT_ID abd GCP_WIP variables must be set in the service Makefile.
 
+## OIDC
+Federated credentials must be set up to allow the action to authenticate to Azure and kubernetes
+
 ## Inputs
-- `azure-credentials`: A JSON string containing service principal credentials (Required)
+- `azure-credentials`: A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}
+- `azure-client-id`: Azure service principal or managed identity client ID when using OIDC
+- `azure-subscription-id`: Azure service principal or managed identity subscription ID when using OIDC
+- `azure-tenant-id`: Azure service principal or managed identity tenant ID when using OIDC
 - `gcp-wip`: The full identifier of the GCP Workload Identity Provider. See https://github.com/DFE-Digital/terraform-modules/blob/main/aks/dfe_analytics/README.md#authentication---github-actions (Optional)
 - `gcp-project-id`: The name of the GCP Project ID. See https://github.com/DFE-Digital/terraform-modules/blob/main/aks/dfe_analytics/README.md#authentication---github-actions (Optional)
 - `environment`: Name of the environment to deploy (Required)
@@ -24,17 +30,27 @@ If using Google Cloud then GCP_PROJECT_ID abd GCP_WIP variables must be set in t
 ## Example
 
 ```yaml
-- name: Deploy App to Review
-  id: deploy_review
-  uses: DFE-Digital/github-actions/deploy-to-aks@master
-  with:
-    azure-credentials:  ${{ secrets.AZURE_CREDENTIALS }}
-    environment: review
-    pr-number: ${{ github.event.pull_request.number }}
-    sha: ${{ needs.build.outputs.docker-image-tag }}
-    healthcheck: 'healthcheck/all'
-    db-seed: true
-    smoke-test: true
-    gcp-wip: ${{ vars.GCP_WIP }}
-    gcp-project-id: ${{ vars.GCP_PROJECT_ID }}
+jobs:
+  main:
+    ...
+    permissions:
+      id-token: write # Required for OIDC authentication to Azure
+      ...
+
+    steps:
+    - name: Deploy App to Review
+      id: deploy_review
+      uses: DFE-Digital/github-actions/deploy-to-aks@master
+      with:
+        azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        environment: review
+        pr-number: ${{ github.event.pull_request.number }}
+        sha: ${{ needs.build.outputs.docker-image-tag }}
+        healthcheck: 'healthcheck/all'
+        db-seed: true
+        smoke-test: true
+        gcp-wip: ${{ vars.GCP_WIP }}
+        gcp-project-id: ${{ vars.GCP_PROJECT_ID }}
 ```

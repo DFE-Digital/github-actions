@@ -6,8 +6,21 @@ inputs:
     type: string
     required: true
   azure-credentials:
-    description: A JSON string containing service principle credentials.
-    required: true
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
   mode:
     description: Maintenance mode to implement, either enable or disable
     required: true
@@ -22,13 +35,24 @@ runs:
   using: composite
   steps:
     - uses: azure/login@v2
+      if: inputs.azure-credentials != ''
       with:
         creds: ${{ inputs.azure-credentials }}
+
+    - uses: azure/login@v2
+      if: inputs.azure-credentials == ''
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Set ARM and kubelogin environment
       uses: DFE-Digital/github-actions/set-kubelogin-environment@master
       with:
         azure-credentials: ${{ inputs.azure-credentials }}
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Build and push docker image
       if: inputs.mode == 'enable'
