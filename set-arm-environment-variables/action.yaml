@@ -3,13 +3,40 @@ description: Sets the environment variables suitable for running Terraform.
 
 inputs:
   azure-credentials:
-    description: A JSON string containing service principle credentials.
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
     required: true
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
 
 runs:
   using: composite
   steps:
-    - name: Extract and set environment variables
+    - name: Error - Azure credentials input but OIDC inputs not empty
+      if: inputs.azure-credentials != '' && (inputs.azure-client-id != '' || inputs.azure-subscription-id != '' || inputs.azure-tenant-id != '')
+      shell: pwsh
+      run: |
+        Write-Error "You must provide either azure-credentials or all of: azure-client-id, azure-subscription-id and azure-tenant-id"
+        exit 1
+
+    - name: Error 2 - OIDC inputs but missing inputs
+      if: inputs.azure-credentials == '' && (inputs.azure-client-id == '' || inputs.azure-subscription-id == '' || inputs.azure-tenant-id == '')
+      shell: pwsh
+      run: |
+        Write-Error "You must provide either azure-credentials or all of: azure-client-id, azure-subscription-id and azure-tenant-id"
+        exit 1
+
+    - name: Extract and set environment variables - Service principal secret
+      if: inputs.azure-credentials != ''
       shell: pwsh
       run: |
         $AZURE_CREDENTIALS_JSON = '${{ inputs.azure-credentials }}'
@@ -18,14 +45,32 @@ runs:
         Write-Output "::add-mask::$ARM_CLIENT_ID"
         "ARM_CLIENT_ID=$ARM_CLIENT_ID" >> $env:GITHUB_ENV
 
-        $ARM_CLIENT_SECRET =  ( $AZURE_CREDENTIALS_JSON | ConvertFrom-Json ).clientSecret
+        $ARM_CLIENT_SECRET = ( $AZURE_CREDENTIALS_JSON | ConvertFrom-Json ).clientSecret
         Write-Output "::add-mask::$ARM_CLIENT_SECRET"
         "ARM_CLIENT_SECRET=$ARM_CLIENT_SECRET" >> $env:GITHUB_ENV
 
-        $ARM_SUBSCRIPTION_ID =  ( $AZURE_CREDENTIALS_JSON | ConvertFrom-Json ).subscriptionId
+        $ARM_SUBSCRIPTION_ID = ( $AZURE_CREDENTIALS_JSON | ConvertFrom-Json ).subscriptionId
         Write-Output "::add-mask::$ARM_SUBSCRIPTION_ID"
         "ARM_SUBSCRIPTION_ID=$ARM_SUBSCRIPTION_ID" >> $env:GITHUB_ENV
 
-        $ARM_TENANT_ID =  ( $AZURE_CREDENTIALS_JSON | ConvertFrom-Json ).tenantId
+        $ARM_TENANT_ID = ( $AZURE_CREDENTIALS_JSON | ConvertFrom-Json ).tenantId
         Write-Output "::add-mask::$ARM_TENANT_ID"
         "ARM_TENANT_ID=$ARM_TENANT_ID" >> $env:GITHUB_ENV
+
+    - name: Extract and set environment variables - OIDC
+      if: inputs.azure-client-id != '' && inputs.azure-subscription-id != '' && inputs.azure-tenant-id != ''
+      shell: pwsh
+      run: |
+        $ARM_CLIENT_ID = '${{ inputs.azure-client-id }}'
+        Write-Output "::add-mask::$ARM_CLIENT_ID"
+        "ARM_CLIENT_ID=$ARM_CLIENT_ID" >> $env:GITHUB_ENV
+
+        $ARM_SUBSCRIPTION_ID = '${{ inputs.azure-subscription-id }}'
+        Write-Output "::add-mask::$ARM_SUBSCRIPTION_ID"
+        "ARM_SUBSCRIPTION_ID=$ARM_SUBSCRIPTION_ID" >> $env:GITHUB_ENV
+
+        $ARM_TENANT_ID = '${{ inputs.azure-tenant-id }}'
+        Write-Output "::add-mask::$ARM_TENANT_ID"
+        "ARM_TENANT_ID=$ARM_TENANT_ID" >> $env:GITHUB_ENV
+
+        "ARM_USE_OIDC=true" >> $env:GITHUB_ENV

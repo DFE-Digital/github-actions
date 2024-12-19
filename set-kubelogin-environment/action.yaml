@@ -3,8 +3,21 @@ description: Sets the environment variables suitable for running Terraform and k
 
 inputs:
   azure-credentials:
-    description: A JSON string containing service principle credentials.
-    required: true
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -13,14 +26,33 @@ runs:
       uses: DFE-Digital/github-actions/set-arm-environment-variables@master
       with:
         azure-credentials: ${{ inputs.azure-credentials }}
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
 
     - name: Set up kubelogin
       uses: azure/use-kubelogin@v1.2
       with:
-        kubelogin-version: 'v0.1.3'
+        kubelogin-version: 'v0.1.6'
 
-    - name: Set kubelogin SPN variables
+    - name: Set common kubelogin SPN variables
       shell: bash
       run: |
         echo "AAD_SERVICE_PRINCIPAL_CLIENT_ID=$ARM_CLIENT_ID" >> $GITHUB_ENV
+        echo "AZURE_CLIENT_ID=$ARM_CLIENT_ID" >> $GITHUB_ENV
+        echo "AZURE_TENANT_ID=$ARM_TENANT_ID" >> $GITHUB_ENV
+
+    - name: Set kubelogin SPN variables - Authentication with service principal secret
+      if: inputs.azure-credentials != ''
+      shell: bash
+      run: |
         echo "AAD_SERVICE_PRINCIPAL_CLIENT_SECRET=$ARM_CLIENT_SECRET" >> $GITHUB_ENV
+        echo "AZURE_CLIENT_SECRET=$ARM_CLIENT_SECRET" >> $GITHUB_ENV
+        echo "AAD_LOGIN_METHOD=spn" >> $GITHUB_ENV
+
+    - name: Set kubelogin SPN variables - Authentication with OIDC
+      if: inputs.azure-credentials == ''
+      shell: bash
+      run: |
+        echo "AZURE_AUTHORITY_HOST=https://login.microsoftonline.com/" >> $GITHUB_ENV
+        echo "AAD_LOGIN_METHOD=workloadidentity" >> $GITHUB_ENV
