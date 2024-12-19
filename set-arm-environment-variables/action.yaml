@@ -61,9 +61,16 @@ runs:
 
         "ARM_USE_OIDC=true" >> $env:GITHUB_ENV
 
-    - name: Extract and set environment variables - Error
+    - name: Error 1
       if: inputs.azure-credentials != '' && (inputs.azure-client-id != '' || inputs.azure-subscription-id != '' || inputs.azure-tenant-id != '')
       shell: pwsh
       run: |
         Write-Error "You must provide either azure-credentials or azure-client-id, azure-subscription-id and azure-tenant-id"
+        exit 1
+
+    - name: Error 2
+      if: inputs.azure-credentials == '' && (inputs.azure-client-id == '' || inputs.azure-subscription-id == '' || inputs.azure-tenant-id == '')
+      shell: pwsh
+      run: |
+        Write-Error "You must provide either azure-credentials or all of: azure-client-id, azure-subscription-id and azure-tenant-id"
         exit 1
