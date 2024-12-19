@@ -23,7 +23,7 @@ runs:
   using: composite
   steps:
     - name: Set ARM variables
-      uses: DFE-Digital/github-actions/set-arm-environment-variables@master
+      uses: DFE-Digital/github-actions/set-arm-environment-variables@oidc-ga
       with:
         azure-credentials: ${{ inputs.azure-credentials }}
         azure-client-id: ${{ inputs.azure-client-id }}
