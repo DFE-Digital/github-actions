@@ -9,6 +9,10 @@ inputs:
     description: Name of the app deployment
     type: string
     required: true
+  namespace:
+    description: Namespace where the app is deployed. Required when role is not cluster admin.
+    type: string
+    required: false
   resource-group:
     description: Name of the Azure resource group
     type: string
@@ -98,11 +102,14 @@ runs:
     - name: Create compressed backup for aks env database
       shell: bash
       run: |
-        if [[ -n "${{ inputs.db-server-name }}" ]]; then
-          ./konduit.sh -s ${{ inputs.db-server-name }} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
-        else
-          ./konduit.sh -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
+        if [[ -n "${{ inputs.namespace }}" ]]; then
+          NAMESPACE_ARG="-n ${{ inputs.namespace }}"
         fi
+        if [[ -n "${{ inputs.db-server-name }}" ]]; then
+          DB_SERVER_NAME_ARG="-s ${{ inputs.db-server-name }}"
+        fi
+
+        ./konduit.sh ${NAMESPACE_ARG} ${DB_SERVER_NAME_ARG} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
 
     - name: Set Connection String
       shell: bash
