@@ -3,22 +3,35 @@ description: Restore an Azure postgres database from a daily backup
 inputs:
   storage-account:
     description: Name of the Azure storage account that contains the backup
-    type: string
     required: true
   app-name:
     description: Name of the app deployment
-    type: string
     required: true
+  namespace:
+    description: Namespace where the app is deployed. Required when role is not cluster admin.
+    required: false
   resource-group:
     description: Name of the Azure resource group
-    type: string
     required: true
   cluster:
     description: Cluster being used. Test or Production.
     required: true
   azure-credentials:
-    description: A JSON string containing service principle credentials.
-    required: true
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
   backup-file:
     description: Name of the backup file to restore. Must include the .gz extension if the remote file has it.
     required: true
@@ -29,6 +42,9 @@ runs:
     - uses: azure/login@v2
       with:
         creds: ${{ inputs.azure-credentials }}
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Setup postgres client
       uses: DFE-Digital/github-actions/install-postgres-client@master
@@ -41,6 +57,9 @@ runs:
     - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
       with:
         azure-credentials: ${{ inputs.azure-credentials }}
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Set up cluster environment variables
       shell: bash
@@ -86,12 +105,15 @@ runs:
     - name: Restore backup to aks env database
       shell: bash
       run: |
+        if [[ -n "${{ inputs.namespace }}" ]]; then
+          NAMESPACE_ARG="-n ${{ inputs.namespace }}"
+        fi
         COMPRESS=$( file --brief ${{ inputs.backup-file }} | grep -ic compressed || true )
         if [[ $COMPRESS -gt 0 ]]; then
-          ./konduit.sh -i ${{ inputs.backup-file }} -c -t 7200 -x ${{ inputs.app-name }} -- psql
-        else
-          ./konduit.sh -i ${{ inputs.backup-file }} -t 7200 -x ${{ inputs.app-name }} -- psql
+          COMPRESS_ARG=-c
         fi
+
+        ./konduit.sh ${NAMESPACE_ARG} -i ${{ inputs.backup-file }} ${COMPRESS_ARG} -t 7200 -x ${{ inputs.app-name }} -- psql
 
     - name: Restore Summary
       if: success()

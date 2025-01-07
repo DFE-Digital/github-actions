@@ -3,23 +3,35 @@ description: Backup an Azure postgres database
 inputs:
   storage-account:
     description: Name of the Azure storage account to store the backup
-    type: string
     required: true
   app-name:
     description: Name of the app deployment
-    type: string
     required: true
+  namespace:
+    description: Namespace where the app is deployed. Required when role is not cluster admin.
+    required: false
   resource-group:
     description: Name of the Azure resource group
-    type: string
     required: true
   cluster:
     description: AKS cluster to use (test or production).
-    type: string
     required: true
   azure-credentials:
-    description: A JSON string containing service principle credentials.
-    required: true
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
   backup-file:
     description: Name of the backup file
     required: true
@@ -37,6 +49,9 @@ runs:
     - uses: azure/login@v2
       with:
         creds: ${{ inputs.azure-credentials }}
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Setup postgres client
       uses: DFE-Digital/github-actions/install-postgres-client@master
@@ -49,6 +64,9 @@ runs:
     - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
       with:
         azure-credentials: ${{ inputs.azure-credentials }}
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Set up cluster environment variables
       shell: bash
@@ -79,11 +97,14 @@ runs:
     - name: Create compressed backup for aks env database
       shell: bash
       run: |
-        if [[ -n "${{ inputs.db-server-name }}" ]]; then
-          ./konduit.sh -s ${{ inputs.db-server-name }} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
-        else
-          ./konduit.sh -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
+        if [[ -n "${{ inputs.namespace }}" ]]; then
+          NAMESPACE_ARG="-n ${{ inputs.namespace }}"
         fi
+        if [[ -n "${{ inputs.db-server-name }}" ]]; then
+          DB_SERVER_NAME_ARG="-s ${{ inputs.db-server-name }}"
+        fi
+
+        ./konduit.sh ${NAMESPACE_ARG} ${DB_SERVER_NAME_ARG} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password -f ${{ inputs.backup-file }}.gz
 
     - name: Set Connection String
       shell: bash
