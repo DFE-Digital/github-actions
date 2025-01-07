@@ -3,23 +3,18 @@ description: Backup an Azure postgres database
 inputs:
   storage-account:
     description: Name of the Azure storage account to store the backup
-    type: string
     required: true
   app-name:
     description: Name of the app deployment
-    type: string
     required: true
   namespace:
     description: Namespace where the app is deployed. Required when role is not cluster admin.
-    type: string
     required: false
   resource-group:
     description: Name of the Azure resource group
-    type: string
     required: true
   cluster:
     description: AKS cluster to use (test or production).
-    type: string
     required: true
   azure-credentials:
     description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'

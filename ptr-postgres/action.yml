@@ -3,19 +3,15 @@ description: Azure postgres database point in time restore
 inputs:
   resource-group:
     description: Name of the Azure postgres server resource group
-    type: string
     required: true
   source-server:
     description: Name of the Azure database server we are restoring from
-    type: string
     required: true
   new-server:
     description: Name of the Azure database server we are restoring to
-    type: string
     required: true
   restore-time:
     description: point in time to be restored, format YYYY-MM-DDTHH:MM:SS e.g. 2024-07-24T06:00:00
-    type: string
     required: true
   cluster:
     description: Cluster being used. test or production.

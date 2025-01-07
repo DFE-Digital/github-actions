@@ -3,7 +3,6 @@ description: Enable or disable maintenance for a service
 inputs:
   environment:
     description: Name of the app environment
-    type: string
     required: true
   azure-credentials:
     description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'

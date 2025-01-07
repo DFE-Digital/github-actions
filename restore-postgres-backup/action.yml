@@ -3,19 +3,15 @@ description: Restore an Azure postgres database from a daily backup
 inputs:
   storage-account:
     description: Name of the Azure storage account that contains the backup
-    type: string
     required: true
   app-name:
     description: Name of the app deployment
-    type: string
     required: true
   namespace:
     description: Namespace where the app is deployed. Required when role is not cluster admin.
-    type: string
     required: false
   resource-group:
     description: Name of the Azure resource group
-    type: string
     required: true
   cluster:
     description: Cluster being used. Test or Production.

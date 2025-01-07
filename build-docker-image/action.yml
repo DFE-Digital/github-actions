@@ -13,20 +13,17 @@ inputs:
   reuse-cache:
     description: Use previously built docker image layers to improve build time. Set to false to refresh image (Default = true)
     default: true
-    type: boolean
   dockerfile-path:
     description: Relative path to the Dockerfile (Default = ./Dockerfile)
     default: ./Dockerfile
   context:
     description: Path used as file context for Docker. If not set, the git repository is cloned using the same git reference as the workflow and used as context.
     default: ""
-    type: string
   target:
     description: The target stage to build of a multi-stage build
   max-cache:
     description: Use max caching for build
     default: false
-    type: boolean
     required: false
   slack-webhook:
     required: false

@@ -38,12 +38,10 @@ inputs:
     required: false
   db-seed:
     description: Run seed command after a deployment. Normally only used for review apps.
-    type: boolean
     required: false
     default: false
   smoke-test:
     description: Enable smoke test after deployment
-    type: boolean
     required: false
     default: false
   healthcheck:
