@@ -31,10 +31,10 @@ inputs:
 outputs:
   tag:
     description: Docker image unique tag
-    value: ${{ steps.set-tag-output.outputs.tag }}
+    value: ${{ steps.set-outputs.outputs.tag }}
   image:
     description: Reference to the built image name with the tag suitable for Kubernetes
-    value: ${{ inputs.docker-repository }}:${{ steps.set-tag-output.outputs.tag }}
+    value: ${{ steps.set-outputs.outputs.repo }}:${{ steps.set-outputs.outputs.tag }}
 
 runs:
   using: composite
@@ -75,11 +75,12 @@ runs:
         echo "BRANCH_TAG=main" >> $GITHUB_ENV
         echo "IMAGE_TAG=$(date +%s)" >> $GITHUB_ENV
 
-    - name: Set tag output
-      id: set-tag-output
+    - name: Set outputs
+      id: set-outputs
       shell: bash
       run: |
         echo "tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+        echo "repo=${DOCKER_REPOSITORY}" >> "$GITHUB_OUTPUT"
 
     - name: Build docker image using inline cache
       uses: docker/build-push-action@v6
