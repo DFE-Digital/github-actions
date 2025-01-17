@@ -1,0 +1,63 @@
+name: Deploy Domains Infrastructure
+description: Deploy Domains for infrastructure
+
+inputs:
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
+  slack-webhook:
+    description: Name of the slack webhook
+    required: false
+  terraform-base:
+    description: Path to the terraform files
+    required: false
+    default: "terraform/domains/infrastructure"
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set Environment variables
+      id: set_env_var
+      shell: bash
+      run: |
+        terraform_version=$(awk '/{/{f=/^terraform/;next}f' ${{ inputs.terraform-base }}/terraform.tf | grep -o [0-9\.]*)
+        echo "TERRAFORM_VERSION=$terraform_version" >> $GITHUB_ENV
+
+    - name: Use Terraform ${{ env.TERRAFORM_VERSION }}
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+
+    - name: Set ARM environment variables
+      uses: DFE-Digital/github-actions/set-arm-environment-variables@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Terraform Domains Infrastructure
+      shell: bash
+      run: |
+        make ci domains-infra-apply
+
+    - name: Slack Notification
+      if: failure()
+      uses: rtCamp/action-slack-notify@master
+      env:
+        SLACK_COLOR: failure
+        SLACK_TITLE: Failure deploying domains infrastructure
+        SLACK_MESSAGE: Failure deploying domains infrastructure
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
