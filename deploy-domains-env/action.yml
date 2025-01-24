@@ -62,8 +62,8 @@ runs:
     - name: Run healthcheck
       shell: bash
       run: |
-        hosted_zones=$(terraform -chdir=${{ inputs.terraform-base }} output -json hosted_zones | jq -r '.[]')
-        for url in $hosted_zones; do
+        external_urls=$(terraform -chdir=${{ inputs.terraform-base }} output -json external_urls | jq -r '.[]')
+        for url in $external_urls; do
           echo "Check health for $url/${{ inputs.healthcheck }}..."
           curl -sS --fail "$url/${{ inputs.healthcheck }}" > /dev/null
         done
