@@ -10,6 +10,7 @@ Federated credentials must be set up to allow the action to authenticate to Azur
 - `storage-account`: Name of the Azure atorage account that contains the backup (Required)
 - `resource-group`: Azure resource group of the storage account (Required)
 - `app-name`: Name of the aks app deployment (Required)
+- `namespace`: Namespace where the app is deployed. Required when role is not cluster admin.
 - `cluster`: AKS cluster to use, test or production (Required)
 - `azure-credentials`: A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}
 - `azure-client-id`: Azure service principal or managed identity client ID when using OIDC
@@ -35,6 +36,7 @@ jobs:
           resource-group: s189t01-app-rg
           app-name: myservice-qa
           cluster: test
+          namespace: ${{ env.NAMESPACE }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
