@@ -17,8 +17,8 @@ inputs:
     description: Relative path to the Dockerfile (Default = ./Dockerfile)
     default: ./Dockerfile
   context:
-    description: Path used as file context for Docker. If not set, the git repository is cloned using the same git reference as the workflow and used as context.
-    default: ""
+    description: Path used as file context for Docker (Default is '.')
+    default: .
   target:
     description: The target stage to build of a multi-stage build
   max-cache:
