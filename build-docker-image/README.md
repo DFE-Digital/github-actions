@@ -26,7 +26,7 @@ A service that uses this action with reuse-cache = true, should also have a cach
 - `snyk-token`: Snyk token for image vulnerability scanning (Default = none)
 - `reuse-cache`: Use previously built docker image layers to improve build time. Set to false to refresh image (Default = true)
 - `dockerfile-path`: Relative path to the Dockerfile (Default = ./Dockerfile)
-- `context`: Path used as file context for Docker. If not set, the git repository is cloned using the same git reference as the workflow and used as context.
+- `context`: Path used as file context for Docker (Default is '.')
 - `target`: The target stage to build of a multi-stage build
 - `docker-repository`: Repository name in the container registry. e.g. ghcr.io/dfe-digital/register-trainee-teachers. Defaults to current Github repository name.
 - `max-cache`: Set to true to use maximum cache level when reuse-cache is set. Defaults to minimum (false)
@@ -39,6 +39,8 @@ A service that uses this action with reuse-cache = true, should also have a cach
 ## Example
 
 ```yaml
+- uses: actions/checkout@v4
+
 - name: Build and push docker image
   uses: DFE-Digital/github-actions/build-docker-image@master
   with:

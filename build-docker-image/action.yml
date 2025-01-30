@@ -17,8 +17,8 @@ inputs:
     description: Relative path to the Dockerfile (Default = ./Dockerfile)
     default: ./Dockerfile
   context:
-    description: Path used as file context for Docker. If not set, the git repository is cloned using the same git reference as the workflow and used as context.
-    default: ""
+    description: Path used as file context for Docker (Default is '.')
+    default: .
   target:
     description: The target stage to build of a multi-stage build
   max-cache:
@@ -72,8 +72,11 @@ runs:
       if: github.event_name != 'push' && github.event_name != 'pull_request'
       shell: bash
       run: |
-        echo "BRANCH_TAG=main" >> $GITHUB_ENV
-        echo "IMAGE_TAG=$(date +%s)" >> $GITHUB_ENV
+        GIT_BRANCH=$(git branch --show-current)
+        BRANCH_TAG=${GIT_BRANCH##*/}
+        GIT_COMMIT=$(git rev-parse HEAD)
+        echo "BRANCH_TAG=$BRANCH_TAG" >> $GITHUB_ENV
+        echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
 
     - name: Set outputs
       id: set-outputs
