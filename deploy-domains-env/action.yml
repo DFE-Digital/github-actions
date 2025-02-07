@@ -57,7 +57,7 @@ runs:
     - name: Terraform Domains Environment
       shell: bash
       run: |
-        make ci ${{ inputs.environment }} domains-apply
+        make ci ${{ inputs.environment }} domains-plan
 
     - name: Run healthcheck
       shell: bash
