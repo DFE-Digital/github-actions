@@ -82,7 +82,7 @@ runs:
       shell: bash
       run: |
         az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
-        kubelogin convert-kubeconfig -l spn
+        kubelogin convert-kubeconfig -l $AAD_LOGIN_METHOD
         # install konduit
         curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/master/scripts/konduit.sh -o ./konduit.sh
         chmod +x ./konduit.sh
