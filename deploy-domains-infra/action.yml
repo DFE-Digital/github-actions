@@ -51,7 +51,7 @@ runs:
     - name: Terraform Domains Infrastructure
       shell: bash
       run: |
-        make ci dns domains-infra-plan
+        make ci domains-infra-plan
 
     - name: Slack Notification
       if: failure()
