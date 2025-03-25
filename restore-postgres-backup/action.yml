@@ -113,7 +113,8 @@ runs:
           COMPRESS_ARG=-c
         fi
 
-        ./konduit.sh ${NAMESPACE_ARG} -i ${{ inputs.backup-file }} ${COMPRESS_ARG} -t 7200 -x ${{ inputs.app-name }} -- psql
+        # ./konduit.sh ${NAMESPACE_ARG} -i ${{ inputs.backup-file }} ${COMPRESS_ARG} -t 7200 -x ${{ inputs.app-name }} -- psql
+        echo "Testing restore postgres backup"
 
     - name: Restore Summary
       if: success()
