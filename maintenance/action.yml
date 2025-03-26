@@ -63,28 +63,3 @@ runs:
         docker-repository: ${{ inputs.docker-repository }}
         context: maintenance_page
 
-    - name: Enable maintenance mode
-      if: inputs.mode == 'enable'
-      shell: bash
-      run: make ci ${{ inputs.environment }} maintenance-fail-over
-      env:
-        MAINTENANCE_IMAGE_TAG: ${{steps.build-image.outputs.tag}}
-
-    - name: Disable maintenance mode
-      if: inputs.mode == 'disable'
-      shell: bash
-      run: make ci ${{ inputs.environment }} disable-maintenance
-
-    - name: Maintenance Summary
-      if: success()
-      shell: bash
-      run: |
-        NOW=$(TZ=Europe/London date +"%F %R")
-        echo 'MAINTENANCE PAGE ${{ inputs.mode }}d!' >> $GITHUB_STEP_SUMMARY
-        echo 'ENV: ${{ inputs.environment }}' >> $GITHUB_STEP_SUMMARY
-        echo "AT : ${NOW}" >> $GITHUB_STEP_SUMMARY
-        if [[ "${{ inputs.mode }}" == "enable" ]]; then
-          TEMP_URLS=$(awk '/name:.*cloud/ {print $2}' ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml)
-          echo 'TEMP URLS:' >> $GITHUB_STEP_SUMMARY
-          echo "${TEMP_URLS}" >> $GITHUB_STEP_SUMMARY
-        fi
