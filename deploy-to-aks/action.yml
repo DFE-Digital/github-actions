@@ -99,7 +99,7 @@ runs:
 
     - name: Terraform apply
       shell: bash
-      run: make ${{ inputs.environment }} ci terraform-apply
+      run: make ci ${{ inputs.environment }} terraform-apply
       env:
         DOCKER_IMAGE_TAG: ${{ inputs.sha }}
         PR_NUMBER: ${{ inputs.pr-number }}
