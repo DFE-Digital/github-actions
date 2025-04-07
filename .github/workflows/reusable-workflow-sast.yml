@@ -231,7 +231,7 @@ jobs:
     if: ${{ needs.test-visibility.outputs.visibility == 'public' }}
     steps:
 
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v2
         if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
         id: app-token
         with:
