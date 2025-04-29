@@ -111,7 +111,10 @@ runs:
 
         EXCLUDE_OPTS=""
         if [[ -n "${{ inputs.exclude-tables }}" ]]; then
-          for table in ${{ inputs.exclude-tables }}; do
+          IFS=', ' read -ra TABLES <<< "${{ inputs.exclude-tables }}"
+          for table in "${TABLES[@]}"; do
+            [[ -z "$table" ]] && continue
+            table=$(echo "$table" | xargs)
             EXCLUDE_OPTS="$EXCLUDE_OPTS --exclude-table-data=$table"
           done
         fi
