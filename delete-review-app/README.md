@@ -15,6 +15,7 @@ If using Google Cloud then GCP_PROJECT_ID abd GCP_WIP variables must be set in t
 - `resource-group-name`: Azure resource group (Required)
 - `storage-account-name`: Azure storage account containing terraform state file (Required)
 - `terraform-base` : Name of the base terraform path (default: 'terraform/application')
+- `tf-file` : name of the file containing the terraform version (default: "terraform.tf")
 - `tf-state-file`: name of file containing terraform state (Required)
 
 ## Example
