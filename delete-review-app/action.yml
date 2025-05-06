@@ -43,6 +43,10 @@ inputs:
   tf-state-file:
     description: name of file containing terraform state
     required: true
+  tf-file:
+    description: name of file containing terraform version
+    required: false
+    default: "terraform.tf"
 
 runs:
   using: composite
@@ -54,7 +58,7 @@ runs:
       id: set_env_var
       shell: bash
       run: |
-        terraform_version=$(awk '/{/{f=/^terraform/;next}f' ${{ inputs.terraform-base }}/terraform.tf | grep -o [0-9\.]*)
+        terraform_version=$(awk '/{/{f=/^terraform/;next}f' ${{ inputs.terraform-base }}/${{ inputs.tf-file }} | grep -o [0-9\.]*)
         echo "TERRAFORM_VERSION=$terraform_version" >> $GITHUB_ENV
 
     - name: Use Terraform ${{ env.TERRAFORM_VERSION }}
