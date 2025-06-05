@@ -25,6 +25,10 @@ inputs:
     description: Use max caching for build
     default: false
     required: false
+  extra-cache-repo:
+    description: Use cache from separate repo
+    default: ''
+    required: false
   slack-webhook:
     required: false
 
@@ -87,7 +91,7 @@ runs:
 
     - name: Build docker image using inline cache
       uses: docker/build-push-action@v6
-      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' ) }}
+      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' && inputs.extra-cache-repo == '' ) }}
       with:
         tags: |
           ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -99,6 +103,32 @@ runs:
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        file: ${{ inputs.dockerfile-path }}
+        context: ${{ inputs.context }}
+        target: ${{ inputs.target }}
+        labels: |
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+      env:
+        DOCKER_BUILD_RECORD_UPLOAD: false
+
+    - name: Build docker image using inline cache and extra repo cache
+      uses: docker/build-push-action@v6
+      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' && inputs.extra-cache-repo != '' ) }}
+      with:
+        tags: |
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+        push: false
+        load: true
+        cache-to: type=inline
+        cache-from: |
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+          type=registry,ref=${{ inputs.extra-cache-repo }}:main
+          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
+          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
@@ -131,7 +161,7 @@ runs:
 
     - name: Build docker image using max cache
       uses: docker/build-push-action@v6
-      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' ) }}
+      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' && inputs.extra-cache-repo == '' ) }}
       with:
         tags: |
           ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -144,6 +174,33 @@ runs:
         cache-from: |
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main-buildcache
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
+        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        file: ${{ inputs.dockerfile-path }}
+        context: ${{ inputs.context }}
+        target: ${{ inputs.target }}
+        labels: |
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+      env:
+        DOCKER_BUILD_RECORD_UPLOAD: false
+
+    - name: Build docker image using max cache and extra repo cache
+      uses: docker/build-push-action@v6
+      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' && inputs.extra-cache-repo != '' ) }}
+      with:
+        tags: |
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+        push: false
+        load: true
+        cache-to: |
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
+        cache-from: |
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main-buildcache
+          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
+          type=registry,ref=${{ inputs.extra-cache-repo }}:main
+          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
+          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
         build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
