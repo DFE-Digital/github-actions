@@ -31,6 +31,11 @@ inputs:
     required: false
   slack-webhook:
     required: false
+  main-branch:
+    required: false
+    default: "main"
+  docker-sha:
+    required: false
 
 outputs:
   tag:
@@ -89,47 +94,72 @@ runs:
         echo "tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
         echo "repo=${DOCKER_REPOSITORY}" >> "$GITHUB_OUTPUT"
 
+    - name: Set vars
+      id: set-vars
+      shell: bash
+      run: |
+        if [[ -z "${{inputs.docker-sha }}" ]]; then
+          echo DOCKER_SHA=${{ env.IMAGE_TAG }} >> "$GITHUB_ENV"
+        else
+          echo DOCKER_SHA=${{ inputs.docker-sha }} >> "$GITHUB_ENV"
+        fi
+        if [[ -z "${{ env.TAGS_VAR }}" ]]; then
+          {
+            echo 'TAGS_VAR<<EOF'
+            echo ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            echo ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+            echo EOF
+          } >> "$GITHUB_ENV"
+        fi
+        if [[ -z "${{ env.MIN_CACHE_FROM_VAR }}" ]]; then
+          {
+            echo 'MIN_CACHE_FROM_VAR<<EOF'
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ inputs.main-branch }}
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+            echo EOF
+          } >> "$GITHUB_ENV"
+        fi
+        if [[ -z "${{ env.MAX_CACHE_TO_VAR }}" ]]; then
+          {
+            echo 'MAX_CACHE_TO_VAR<<EOF'
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
+            echo EOF
+          } >> "$GITHUB_ENV"
+        fi
+        if [[ -z "${{ env.MAX_CACHE_FROM_VAR }}" ]]; then
+          {
+            echo 'MAX_CACHE_FROM_VAR<<EOF'
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ inputs.main-branch }}-buildcache
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
+            echo EOF
+          } >> "$GITHUB_ENV"
+        fi
+        if [[ -n "${{ inputs.extra-cache-repo }}" ]]; then
+          {
+          echo 'EXTRA_CACHE_FROM_VAR<<EOF'
+          echo type=registry,ref=${{ inputs.extra-cache-repo }}:${{ inputs.main-branch }}
+          echo type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
+          echo type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
+          echo EOF
+          } >> "$GITHUB_ENV"
+        fi
+
     - name: Build docker image using inline cache
       uses: docker/build-push-action@v6
-      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' && inputs.extra-cache-repo == '' ) }}
+      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' ) }}
       with:
         tags: |
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+          ${{ env.TAGS_VAR }}
         push: false
         load: true
         cache-to: type=inline
         cache-from: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
-        file: ${{ inputs.dockerfile-path }}
-        context: ${{ inputs.context }}
-        target: ${{ inputs.target }}
-        labels: |
-          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-      env:
-        DOCKER_BUILD_RECORD_UPLOAD: false
-
-    - name: Build docker image using inline cache and extra repo cache
-      uses: docker/build-push-action@v6
-      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' && inputs.extra-cache-repo != '' ) }}
-      with:
-        tags: |
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
-        push: false
-        load: true
-        cache-to: type=inline
-        cache-from: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
-          type=registry,ref=${{ inputs.extra-cache-repo }}:main
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ env.MIN_CACHE_FROM_VAR }}
+          ${{ env.EXTRA_CACHE_FROM_VAR }}
+        build-args: COMMIT_SHA=${{ env.DOCKER_SHA }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -143,12 +173,11 @@ runs:
       if: ${{ ( inputs.reuse-cache == 'false' && inputs.max-cache == 'false' ) }}
       with:
         tags: |
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+          ${{ env.TAGS_VAR }}
         push: false
         load: true
         cache-to: type=inline
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: COMMIT_SHA=${{ env.DOCKER_SHA }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -161,47 +190,18 @@ runs:
 
     - name: Build docker image using max cache
       uses: docker/build-push-action@v6
-      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' && inputs.extra-cache-repo == '' ) }}
+      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' ) }}
       with:
         tags: |
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+          ${{ env.TAGS_VAR }}
         push: false
         load: true
         cache-to: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
+          ${{ env.MAX_CACHE_TO_VAR }}
         cache-from: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main-buildcache
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
-        file: ${{ inputs.dockerfile-path }}
-        context: ${{ inputs.context }}
-        target: ${{ inputs.target }}
-        labels: |
-          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-      env:
-        DOCKER_BUILD_RECORD_UPLOAD: false
-
-    - name: Build docker image using max cache and extra repo cache
-      uses: docker/build-push-action@v6
-      if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' && inputs.extra-cache-repo != '' ) }}
-      with:
-        tags: |
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
-        push: false
-        load: true
-        cache-to: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
-        cache-from: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main-buildcache
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
-          type=registry,ref=${{ inputs.extra-cache-repo }}:main
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ env.MAX_CACHE_FROM_VAR }}
+          ${{ env.EXTRA_CACHE_FROM_VAR }}
+        build-args: COMMIT_SHA=${{ env.DOCKER_SHA }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -215,14 +215,12 @@ runs:
       if: ${{ ( inputs.reuse-cache == 'false' && inputs.max-cache == 'true' ) }}
       with:
         tags: |
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-          ${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
+          ${{ env.TAGS_VAR }}
         push: false
         load: true
         cache-to: |
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
-          type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ env.MAX_CACHE_TO_VAR }}
+        build-args: COMMIT_SHA=${{ env.DOCKER_SHA }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -242,7 +240,7 @@ runs:
       env:
         SNYK_TOKEN: ${{ inputs.snyk-token }}
       run: |
-        snyk container test ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
+        snyk container test ${{ env.DOCKER_REPOSITORY }}:${{ env.DOCKER_SHA }} --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
 
     # - name: Run Snyk to check Docker image for vulnerabilities
     #   uses: snyk/actions/docker@master
@@ -256,6 +254,32 @@ runs:
     - name: Push ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} image to registry
       shell: bash
       run: docker image push --all-tags ${{ env.DOCKER_REPOSITORY }}
+
+    - name: Unset vars
+      id: unset-vars
+      shell: bash
+      run: |
+        # null the env vars otherwise they return to the calling workflow
+        {
+          echo 'TAGS_VAR<<EOF'
+          echo EOF
+        } >> "$GITHUB_ENV"
+        {
+          echo 'MIN_CACHE_FROM_VAR<<EOF'
+          echo EOF
+        } >> "$GITHUB_ENV"
+        {
+          echo 'MAX_CACHE_TO_VAR<<EOF'
+          echo EOF
+        } >> "$GITHUB_ENV"
+        {
+          echo 'MAX_CACHE_FROM_VAR<<EOF'
+          echo EOF
+        } >> "$GITHUB_ENV"
+        {
+          echo 'EXTRA_CACHE_FROM_VAR<<EOF'
+          echo EOF
+        } >> "$GITHUB_ENV"
 
     - name: Notify slack channel on job failure
       uses: rtCamp/action-slack-notify@master
