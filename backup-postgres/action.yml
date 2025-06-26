@@ -99,28 +99,6 @@ runs:
         curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/main/scripts/konduit.sh -o ./konduit.sh
         chmod +x ./konduit.sh
 
-    - name: Create compressed backup for aks env database
-      shell: bash
-      run: |
-        if [[ -n "${{ inputs.namespace }}" ]]; then
-          NAMESPACE_ARG="-n ${{ inputs.namespace }}"
-        fi
-        if [[ -n "${{ inputs.db-server-name }}" ]]; then
-          DB_SERVER_NAME_ARG="-s ${{ inputs.db-server-name }}"
-        fi
-
-        EXCLUDE_OPTS=""
-        if [[ -n "${{ inputs.exclude-tables }}" ]]; then
-          IFS=', ' read -ra TABLES <<< "${{ inputs.exclude-tables }}"
-          for table in "${TABLES[@]}"; do
-            [[ -z "$table" ]] && continue
-            table=$(echo "$table" | xargs)
-            EXCLUDE_OPTS="$EXCLUDE_OPTS --exclude-table-data=$table"
-          done
-        fi
-
-        ./konduit.sh ${NAMESPACE_ARG} ${DB_SERVER_NAME_ARG} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password $EXCLUDE_OPTS -f ${{ inputs.backup-file }}.gz
-
     - name: Set Connection String
       shell: bash
       run: |
@@ -128,13 +106,47 @@ runs:
         echo "::add-mask::$STORAGE_CONN_STR"
         echo "AZURE_STORAGE_CONNECTION_STRING=$STORAGE_CONN_STR" >> $GITHUB_ENV
 
-    - name: Upload Backup to Azure Storage
+    - name: Create compressed backup for aks env database and Upload Backup to Azure Storage
       shell: bash
       run: |
         az config set extension.use_dynamic_install=yes_without_prompt
         az config set core.only_show_errors=true
-        az storage azcopy blob upload --container database-backup \
-        --source ${{ inputs.backup-file }}.gz
+
+        BACKUP_FILE="${{ inputs.backup-file }}.gz"
+        BLOB_NAME=$(basename "$BACKUP_FILE")
+
+        echo "Checking if backup $BLOB_NAME already exists in Azure Blob Storage..."
+
+        BACKUP_EXISTS=$(az storage blob exists \
+          --container-name database-backup \
+          --name "$BLOB_NAME" \
+          --connection-string "$AZURE_STORAGE_CONNECTION_STRING" \
+          --query "exists" -o tsv)
+
+        if [ "$BACKUP_EXISTS" = "true" ]; then
+          echo "Backup $BLOB_NAME already exists. Skipping backup to avoid overwrite."
+          exit 1
+        else
+          echo "Backup does not exist. Uploading backup..."
+          if [[ -n "${{ inputs.namespace }}" ]]; then
+            NAMESPACE_ARG="-n ${{ inputs.namespace }}"
+          fi
+          if [[ -n "${{ inputs.db-server-name }}" ]]; then
+            DB_SERVER_NAME_ARG="-s ${{ inputs.db-server-name }}"
+          fi
+          EXCLUDE_OPTS=""
+          if [[ -n "${{ inputs.exclude-tables }}" ]]; then
+            IFS=', ' read -ra TABLES <<< "${{ inputs.exclude-tables }}"
+            for table in "${TABLES[@]}"; do
+              [[ -z "$table" ]] && continue
+              table=$(echo "$table" | xargs)
+              EXCLUDE_OPTS="$EXCLUDE_OPTS --exclude-table-data=$table"
+            done
+          fi
+          ./konduit.sh ${NAMESPACE_ARG} ${DB_SERVER_NAME_ARG} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password $EXCLUDE_OPTS -f ${{ inputs.backup-file }}.gz
+          az storage azcopy blob upload --container database-backup \
+          --source ${{ inputs.backup-file }}.gz
+        fi
 
     - name: Backup Summary
       if: success()
