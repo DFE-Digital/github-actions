@@ -34,7 +34,7 @@ inputs:
   main-branch:
     required: false
     default: "main"
-  dockerfile-sha:
+  docker-sha:
     required: false
 
 outputs:
@@ -98,10 +98,10 @@ runs:
       id: set-vars
       shell: bash
       run: |
-        if [[ -z "${{inputs.dockerfile-sha }}" ]]; then
+        if [[ -z "${{inputs.docker-sha }}" ]]; then
           echo DOCKER_SHA=${{ env.IMAGE_TAG }} >> "$GITHUB_ENV"
         else
-          echo DOCKER_SHA=${{ inputs.dockerfile-sha }} >> "$GITHUB_ENV"
+          echo DOCKER_SHA=${{ inputs.docker-sha }} >> "$GITHUB_ENV"
         fi
         if [[ -z "${{ env.TAGS_VAR }}" ]]; then
           {
@@ -123,26 +123,26 @@ runs:
         if [[ -z "${{ env.MAX_CACHE_TO_VAR }}" ]]; then
           {
             echo 'MAX_CACHE_TO_VAR<<EOF'
-            type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
-            type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
             echo EOF
           } >> "$GITHUB_ENV"
         fi
         if [[ -z "${{ env.MAX_CACHE_FROM_VAR }}" ]]; then
           {
             echo 'MAX_CACHE_FROM_VAR<<EOF'
-            type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ inputs.main-branch }}-buildcache
-            type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache
-            type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ inputs.main-branch }}-buildcache
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache
+            echo type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
             echo EOF
           } >> "$GITHUB_ENV"
         fi
         if [[ -n "${{ inputs.extra-cache-repo }}" ]]; then
           {
           echo 'EXTRA_CACHE_FROM_VAR<<EOF'
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ inputs.main-branch }}
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
-          type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
+          echo type=registry,ref=${{ inputs.extra-cache-repo }}:${{ inputs.main-branch }}
+          echo type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
+          echo type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
           echo EOF
           } >> "$GITHUB_ENV"
         fi
@@ -233,7 +233,7 @@ runs:
       env:
         SNYK_TOKEN: ${{ inputs.snyk-token }}
       with:
-        image: ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+        image: ${{ env.DOCKER_REPOSITORY }}:${{ env.DOCKER_SHA }}
         args: --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
 
     - name: Push ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} image to registry
