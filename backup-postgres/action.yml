@@ -143,7 +143,7 @@ runs:
               EXCLUDE_OPTS="$EXCLUDE_OPTS --exclude-table-data=$table"
             done
           fi
-          ./konduit.sh ${NAMESPACE_ARG} ${DB_SERVER_NAME_ARG} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=1 --if-exists --no-owner --verbose --no-password $EXCLUDE_OPTS -f ${{ inputs.backup-file }}.gz
+          ./konduit.sh ${NAMESPACE_ARG} ${DB_SERVER_NAME_ARG} -t 7200 -x ${{ inputs.app-name }} -- pg_dump -E utf8 --clean --compress=2 --if-exists --no-owner --verbose --no-password $EXCLUDE_OPTS -f ${{ inputs.backup-file }}.gz
           az storage azcopy blob upload --container database-backup \
           --source ${{ inputs.backup-file }}.gz
         fi
@@ -162,13 +162,13 @@ runs:
       env:
         DB_SERVER: ${{ inputs.db-server-name || 'default for app'   }}
 
-    - name: Notify Slack channel on job failure
-      if: failure()
-      uses: rtCamp/action-slack-notify@v2
-      env:
-        SLACK_USERNAME: CI Deployment
-        SLACK_TITLE: Database ${{ inputs.db-server-name }} backup failure
-        SLACK_MESSAGE: ${{ inputs.app-name }} backup job failed
-        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
-        SLACK_COLOR: failure
-        SLACK_FOOTER: Sent from backup job in backup-db workflow
+    # - name: Notify Slack channel on job failure
+    #   if: failure()
+    #   uses: rtCamp/action-slack-notify@v2
+    #   env:
+    #     SLACK_USERNAME: CI Deployment
+    #     SLACK_TITLE: Database ${{ inputs.db-server-name }} backup failure
+    #     SLACK_MESSAGE: ${{ inputs.app-name }} backup job failed
+    #     SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+    #     SLACK_COLOR: failure
+    #     SLACK_FOOTER: Sent from backup job in backup-db workflow
