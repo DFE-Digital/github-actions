@@ -45,10 +45,10 @@ runs:
 
     - name: Get access token
       id: get_token
+      shell: bash
       run: |
         ACCESS_TOKEN=$(az account get-access-token --query accessToken -o tsv)
         echo "access_token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
-
 
     - name: Set up cluster environment variables
       shell: bash
