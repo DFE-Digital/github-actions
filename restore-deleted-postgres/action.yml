@@ -56,7 +56,7 @@ runs:
         curl -X GET \
           -H "Authorization: Bearer ${{ steps.get_token.outputs.access_token }}" \
           -H "Content-Type: application/json" \
-          "https://management.azure.com/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.DBforPostgreSQL/flexibleServers?api-version=${{ env.API_VERSION }}"
+          "https://management.azure.com/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.DBforPostgreSQL/flexibleServers?api-version=2024-08-01"
 
 
     - name: Set up cluster environment variables
