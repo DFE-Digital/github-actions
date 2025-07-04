@@ -59,15 +59,32 @@ runs:
         SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
         RESOURCE_GROUP="${AZURE_RESOURCE_GROUP}"
         API_VERSION="${API_VERSION}"
-        curl -X GET \
+        REGION="${REGION}"
+        DELETED_POSTGRES_DB_SERVER="${DELETED_POSTGRES_DB_SERVER}"
+        RESTORE_TIME="${RESTORE_TIME}"
+        curl -X PUT \
           -H "Authorization: Bearer ${{ steps.get_token.outputs.access_token }}" \
           -H "Content-Type: application/json" \
-          "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.DBforPostgreSQL/flexibleServers?api-version=${API_VERSION}"
+          -d '{
+            "location": "'${REGION}'",
+            "properties": {
+              "createMode": "ReviveDropped",
+              "sourceServerResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/'${RESOURCE_GROUP}'/providers/Microsoft.DBforPostgreSQL/flexibleServers/'${DELETED_POSTGRES_DB_SERVER}'",
+              "pointInTimeUTC": "'${RESTORE_TIME}'",
+              "Network": {
+                "DelegatedSubnetResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/s189t01-tsc-ts-rg/providers/Microsoft.Network/virtualNetworks/s189t01-tsc-test-vnet/subnets/postgres-snet",
+                "PrivateDnsZoneArmResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/189t01-tsc-test-bs-rg/providers/Microsoft.Network/privateDnsZones/test.internal.postgres.database.azure.com"
+              }
+            }
+          }' \
+          "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.DBforPostgreSQL/flexibleServers/${DELETED_POSTGRES_DB_SERVER}?api-version=${API_VERSION}"
       env:
         AZURE_SUBSCRIPTION_ID: ${{ inputs.azure-subscription-id }}
         AZURE_RESOURCE_GROUP: ${{ inputs.resource-group }}
+        DELETED_POSTGRES_DB_SERVER: ${{ inputs.new-server }}
         API_VERSION: "2024-08-01"
-
+        REGION: "uksouth" 
+        RESTORE_TIME: ${{ inputs.restore-time }}
 
     - name: Set up cluster environment variables
       shell: bash
@@ -98,9 +115,11 @@ runs:
       run: |
         SNET_ID=$(az network vnet subnet list --resource-group ${{ env.cluster_rg }} --vnet-name ${{ env.db_vnet }} --query "[?name=='${{ env.db_subnet }}'].id" -o tsv)
         echo "::add-mask::$SNET_ID"
+        echo "$SNET_ID"
         echo "SNET_ID=$SNET_ID" >> $GITHUB_ENV
         DNS_ID=$(az network private-dns zone list --resource-group ${{ env.db_dns_rg }} --query "[?name=='${{ env.db_dns_zone }}'].id" -o tsv)
         echo "::add-mask::$DNS_ID"
+        echo "$DNS_ID"
         echo "DNS_ID=$DNS_ID" >> $GITHUB_ENV
 
 
