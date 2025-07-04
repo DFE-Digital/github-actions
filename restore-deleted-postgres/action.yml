@@ -73,7 +73,7 @@ runs:
               "pointInTimeUTC": "'${RESTORE_TIME}'",
               "Network": {
                 "DelegatedSubnetResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/s189t01-tsc-ts-rg/providers/Microsoft.Network/virtualNetworks/s189t01-tsc-test-vnet/subnets/postgres-snet",
-                "PrivateDnsZoneArmResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/189t01-tsc-test-bs-rg/providers/Microsoft.Network/privateDnsZones/test.internal.postgres.database.azure.com"
+                "PrivateDnsZoneArmResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/s189t01-tsc-test-bs-rg/providers/Microsoft.Network/privateDnsZones/test.internal.postgres.database.azure.com"
               }
             }
           }' \
