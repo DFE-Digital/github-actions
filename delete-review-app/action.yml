@@ -103,7 +103,7 @@ runs:
 
     - name: Install Storage Blob Extension
       shell: bash
-      run: az extension add --name storage-blob-preview
+      run: az extension add --name storage-blob-preview --version 1.0.0b1
 
     - name: Set Container Access Key
       shell: bash
