@@ -1,0 +1,137 @@
+name: Restore deleted postgres
+description: Azure postgres database point in time restore
+inputs:
+  resource-group:
+    description: Name of the Azure postgres server resource group
+    required: true
+  deleted-server:
+    description: Name of the Azure database server we are restoring to
+    required: true
+  restore-time:
+    description: restore point in time, format YYYY-MM-DDTHH:MM:SS e.g. 2024-07-24T06:00:00 (Required). This time should be at least 10mins plus server deleted time
+    required: true
+  cluster:
+    description: Cluster being used. test or production.
+    required: true
+  azure-credentials:
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/login@v2
+      with:
+        creds: ${{ inputs.azure-credentials }}
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Get access token
+      id: get_token
+      shell: bash
+      run: |
+        ACCESS_TOKEN=$(az account get-access-token --query accessToken -o tsv)
+        echo "::add-mask::$ACCESS_TOKEN"
+        echo "access_token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Set up cluster environment variables
+      shell: bash
+      run: |
+        case ${{ inputs.cluster }} in
+          test)
+            echo "cluster_rg=s189t01-tsc-ts-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-test-aks" >> $GITHUB_ENV
+            echo "db_vnet=s189t01-tsc-test-vnet" >> $GITHUB_ENV
+            echo "db_dns_zone=test.internal.postgres.database.azure.com" >> $GITHUB_ENV
+            echo "db_dns_rg=s189t01-tsc-test-bs-rg" >> $GITHUB_ENV
+            ;;
+          production)
+            echo "cluster_rg=s189p01-tsc-pd-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189p01-tsc-production-aks" >> $GITHUB_ENV
+            echo "db_vnet=s189p01-tsc-production-vnet" >> $GITHUB_ENV
+            echo "db_dns_zone=production.internal.postgres.database.azure.com" >> $GITHUB_ENV
+            echo "db_dns_rg=s189p01-tsc-production-bs-rg" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "unknown cluster"
+            ;;
+        esac
+        echo "db_subnet=postgres-snet" >> $GITHUB_ENV
+
+    - name: Get vnet id
+      shell: bash
+      run: |
+        SNET_ID=$(az network vnet subnet list --resource-group ${{ env.cluster_rg }} --vnet-name ${{ env.db_vnet }} --query "[?name=='${{ env.db_subnet }}'].id" -o tsv)
+        echo "::add-mask::$SNET_ID"
+        echo "SNET_ID=$SNET_ID" >> $GITHUB_ENV
+        DNS_ID=$(az network private-dns zone list --resource-group ${{ env.db_dns_rg }} --query "[?name=='${{ env.db_dns_zone }}'].id" -o tsv)
+        echo "::add-mask::$DNS_ID"
+        echo "DNS_ID=$DNS_ID" >> $GITHUB_ENV
+
+    - name: Check if deleted postgres database exists in Azure
+      shell: bash
+      run: |
+        if az postgres flexible-server show \
+              --name "$DELETED_POSTGRES_DB_SERVER" \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --output none 2>/dev/null; then
+          echo "Postgres server '$DELETED_POSTGRES_DB_SERVER' already exists. Exiting..."
+          exit 1
+        else
+          echo "Postgres server '$DELETED_POSTGRES_DB_SERVER' does not exist. This will be restored from Azure"
+        fi
+      env:
+        AZURE_RESOURCE_GROUP: ${{ inputs.resource-group }}
+        DELETED_POSTGRES_DB_SERVER: ${{ inputs.deleted-server }}
+
+    - name: Restore deleted postgres database
+      shell: bash
+      run: |
+        echo "AZURE_SUBSCRIPTION_ID=${{ env.AZURE_SUBSCRIPTION_ID }}"
+        echo "AZURE_RESOURCE_GROUP=${{ env.AZURE_RESOURCE_GROUP }}"
+        echo "API_VERSION=${{ env.API_VERSION }}"
+        SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+        RESOURCE_GROUP="${AZURE_RESOURCE_GROUP}"
+        API_VERSION="${API_VERSION}"
+        REGION="${REGION}"
+        DELETED_POSTGRES_DB_SERVER="${DELETED_POSTGRES_DB_SERVER}"
+        RESTORE_TIME="${RESTORE_TIME}"
+        curl -X PUT \
+          -H "Authorization: Bearer ${{ steps.get_token.outputs.access_token }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "location": "'${REGION}'",
+            "properties": {
+              "createMode": "ReviveDropped",
+              "sourceServerResourceId": "/subscriptions/'${SUBSCRIPTION_ID}'/resourceGroups/'${RESOURCE_GROUP}'/providers/Microsoft.DBforPostgreSQL/flexibleServers/'${DELETED_POSTGRES_DB_SERVER}'",
+              "pointInTimeUTC": "'${RESTORE_TIME}'",
+              "Network": {
+                "DelegatedSubnetResourceId": "'${SNET_ID}'",
+                "PrivateDnsZoneArmResourceId": "'${DNS_ID}'"
+              }
+            }
+          }' \
+          "https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.DBforPostgreSQL/flexibleServers/${DELETED_POSTGRES_DB_SERVER}?api-version=${API_VERSION}"
+      env:
+        AZURE_SUBSCRIPTION_ID: ${{ inputs.azure-subscription-id }}
+        AZURE_RESOURCE_GROUP: ${{ inputs.resource-group }}
+        DELETED_POSTGRES_DB_SERVER: ${{ inputs.deleted-server }}
+        API_VERSION: "2024-08-01"
+        REGION: "uksouth" 
+        RESTORE_TIME: ${{ inputs.restore-time }}
+
+
