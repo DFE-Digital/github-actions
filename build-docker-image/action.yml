@@ -31,6 +31,8 @@ inputs:
     required: false
   slack-webhook:
     required: false
+  build-arg:
+    required: false
 
 outputs:
   tag:
@@ -103,7 +105,9 @@ runs:
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: |
+          COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ inputs.build-arg }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -129,7 +133,9 @@ runs:
           type=registry,ref=${{ inputs.extra-cache-repo }}:main
           type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
           type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: |
+          COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ inputs.build-arg }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -148,7 +154,9 @@ runs:
         push: false
         load: true
         cache-to: type=inline
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: |
+          COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ inputs.build-arg }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -174,7 +182,9 @@ runs:
         cache-from: |
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:main-buildcache
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: |
+          COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ inputs.build-arg }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -201,7 +211,9 @@ runs:
           type=registry,ref=${{ inputs.extra-cache-repo }}:main
           type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.IMAGE_TAG }}
           type=registry,ref=${{ inputs.extra-cache-repo }}:${{ env.BRANCH_TAG }}
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: |
+          COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ inputs.build-arg }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
@@ -222,7 +234,9 @@ runs:
         cache-to: |
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}-buildcache,mode=max
           type=registry,ref=${{ env.DOCKER_REPOSITORY }}:${{ env.BRANCH_TAG }}-buildcache,mode=max
-        build-args: COMMIT_SHA=${{ env.IMAGE_TAG }}
+        build-args: |
+          COMMIT_SHA=${{ env.IMAGE_TAG }}
+          ${{ inputs.build-arg }}
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
