@@ -230,7 +230,7 @@ runs:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
     - name: Run Snyk to check Docker image for vulnerabilities
-      uses: snyk/actions/docker@master
+      uses: snyk/actions/docker@0.4.0
       if: inputs.snyk-token != ''
       env:
         SNYK_TOKEN: ${{ inputs.snyk-token }}
