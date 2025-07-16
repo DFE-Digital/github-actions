@@ -229,14 +229,29 @@ runs:
       env:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
-    - name: Run Snyk to check Docker image for vulnerabilities
-      uses: snyk/actions/docker@master
+    - name: setup snyk
+      uses: snyk/actions/setup@master
       if: inputs.snyk-token != ''
+      id: snyk
+      with:
+        snyk-version: v1.1297.3
+
+    - name: snyk scan
+      if: inputs.snyk-token != ''
+      shell: bash
       env:
         SNYK_TOKEN: ${{ inputs.snyk-token }}
-      with:
-        image: ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
-        args: --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
+      run: |
+        snyk container test ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
+
+    # - name: Run Snyk to check Docker image for vulnerabilities
+    #   uses: snyk/actions/docker@master
+    #   if: inputs.snyk-token != ''
+    #   env:
+    #     SNYK_TOKEN: ${{ inputs.snyk-token }}
+    #   with:
+    #     image: ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }}
+    #     args: --file=${{ inputs.dockerfile-path }} --severity-threshold=high --exclude-app-vulns
 
     - name: Push ${{ env.DOCKER_REPOSITORY }}:${{ env.IMAGE_TAG }} image to registry
       shell: bash
