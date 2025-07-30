@@ -61,7 +61,7 @@ runs:
     - name: Setup postgres client
       uses: DFE-Digital/github-actions/install-postgres-client@master
       with:
-        version: 16
+        version: 17
 
     - name: Install kubectl
       uses: DFE-Digital/github-actions/set-kubectl@master
