@@ -56,7 +56,7 @@ e.g.
     context: .
     max-cache: false
     main-branch: "master"
-    docker-repository: ${{ env.DOCKER_REPOSITORY }
+    docker-repository: ${{ env.DOCKER_REPOSITORY }}
 ```
 
 ## Inputs
