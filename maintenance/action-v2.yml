@@ -166,6 +166,20 @@ runs:
         fi
         
         echo "Customizations applied successfully"
+        
+        # Also need to replace placeholders in the manifests
+        # Get the service name from the docker repository (e.g., "teacher_success" from "ghcr.io/dfe-digital/teacher-success-maintenance")
+        SERVICE_NAME=$(echo "${{ inputs.docker-repository }}" | sed 's/.*\/\([^-]*\)-maintenance$/\1/' | sed 's/-/_/g')
+        echo "Service name for manifests: $SERVICE_NAME"
+        
+        # Replace placeholders in deployment template (but keep #MAINTENANCE_IMAGE_TAG# for the script to replace)
+        sed -i "s/#SERVICE_NAME#/${SERVICE_NAME}/g" maintenance_page/manifests/maintenance/deployment_maintenance.yml.tmpl
+        sed -i "s|#DOCKER_REPOSITORY#|${{ inputs.docker-repository }}|g" maintenance_page/manifests/maintenance/deployment_maintenance.yml.tmpl
+        
+        # Replace placeholders in service manifest
+        sed -i "s/#SERVICE_NAME#/${SERVICE_NAME}/g" maintenance_page/manifests/maintenance/service_maintenance.yml
+        
+        echo "Manifest placeholders replaced"
 
     - name: Build and push docker image
       if: inputs.mode == 'enable'
@@ -177,12 +191,10 @@ runs:
         docker-repository: ${{ inputs.docker-repository }}
         context: maintenance_page
 
-    - name: Clean up maintenance page directory
-      if: inputs.mode == 'enable' && always()
-      shell: bash
-      run: |
-        rm -rf maintenance_page
-        echo "Maintenance page directory cleaned up"
+    # Note: We don't clean up maintenance_page directory here because:
+    # 1. The scripts directory is needed by the Makefile for failover.sh
+    # 2. The manifests directory might be needed for checking temp URLs
+    # The directory will be cleaned up when the workflow ends anyway
 
     - name: Enable maintenance mode
       if: inputs.mode == 'enable'
