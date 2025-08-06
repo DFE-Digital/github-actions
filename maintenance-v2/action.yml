@@ -97,6 +97,18 @@ runs:
         echo "Current directory: $(pwd)"
         echo "GitHub workspace: ${{ github.workspace }}"
         
+        # Save any existing environment-specific manifests before removing directory
+        if [ -d "maintenance_page/manifests" ]; then
+          echo "Preserving existing environment-specific manifests..."
+          mkdir -p /tmp/preserved_manifests
+          if [ -d "maintenance_page/manifests/staging" ]; then
+            cp -r maintenance_page/manifests/staging /tmp/preserved_manifests/
+          fi
+          if [ -d "maintenance_page/manifests/production" ]; then
+            cp -r maintenance_page/manifests/production /tmp/preserved_manifests/
+          fi
+        fi
+        
         # Remove any existing maintenance_page directory and create fresh
         rm -rf maintenance_page
         mkdir -p maintenance_page
@@ -124,9 +136,24 @@ runs:
         cp -r templates/new_service/maintenance_page/scripts ${{ github.workspace }}/maintenance_page/
         
         # Only copy the maintenance manifests directory (contains deployment and service templates)
-        # Environment-specific manifests (staging/production) should already exist in the service repo
         mkdir -p ${{ github.workspace }}/maintenance_page/manifests/
         cp -r templates/new_service/maintenance_page/manifests/maintenance ${{ github.workspace }}/maintenance_page/manifests/
+        
+        # Restore preserved environment-specific manifests if they existed
+        if [ -d "/tmp/preserved_manifests" ]; then
+          echo "Restoring preserved environment-specific manifests..."
+          cp -r /tmp/preserved_manifests/* ${{ github.workspace }}/maintenance_page/manifests/
+          rm -rf /tmp/preserved_manifests
+        else
+          echo "No preserved manifests found, checking if they exist in the repo..."
+          # If no preserved manifests, check if they exist in the current repo
+          # (they should be committed to the service repository)
+          if [ -d "maintenance_page/manifests/staging" ] || [ -d "maintenance_page/manifests/production" ]; then
+            echo "ERROR: Environment-specific manifests should be in the repository but weren't found"
+            echo "Please ensure maintenance_page/manifests/staging/ and maintenance_page/manifests/production/ directories exist in your repository"
+            exit 1
+          fi
+        fi
         
         # Debug: Verify files were copied
         echo "Files in maintenance_page directory:"
