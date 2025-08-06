@@ -168,10 +168,10 @@ runs:
         echo "Customizations applied successfully"
         
         # Also need to replace placeholders in the manifests
-        # Get the service name from the docker repository (e.g., "teacher_success" from "ghcr.io/dfe-digital/teacher-success-maintenance")
+        # Get the service name from the docker repository (e.g., "teacher-success" from "ghcr.io/dfe-digital/teacher-success-maintenance")
         # First extract just the repo name, then get the service part
         REPO_NAME=$(echo "${{ inputs.docker-repository }}" | sed 's|.*/||')
-        SERVICE_NAME=$(echo "$REPO_NAME" | sed 's/-maintenance$//' | sed 's/-/_/g')
+        SERVICE_NAME=$(echo "$REPO_NAME" | sed 's/-maintenance$//')
         echo "Service name for manifests: $SERVICE_NAME"
         
         # Replace placeholders in deployment template (but keep #MAINTENANCE_IMAGE_TAG# for the script to replace)
