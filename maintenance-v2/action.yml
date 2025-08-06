@@ -130,9 +130,14 @@ runs:
         cp -r templates/new_service/maintenance_page/html ${{ github.workspace }}/maintenance_page/
         
         # Copy the maintenance manifests templates (deployment and service only)
-        # These go in manifests/maintenance/ directory
-        mkdir -p ${{ github.workspace }}/maintenance_page/manifests/maintenance
-        cp -r templates/new_service/maintenance_page/manifests/maintenance/* ${{ github.workspace }}/maintenance_page/manifests/maintenance/
+        # Only copy if they don't already exist in the service repository
+        if [ ! -d "${{ github.workspace }}/maintenance_page/manifests/maintenance" ]; then
+          echo "Copying maintenance manifest templates from teacher-services-cloud..."
+          mkdir -p ${{ github.workspace }}/maintenance_page/manifests/maintenance
+          cp -r templates/new_service/maintenance_page/manifests/maintenance/* ${{ github.workspace }}/maintenance_page/manifests/maintenance/
+        else
+          echo "Using existing maintenance manifests from service repository"
+        fi
         
         # Check if service has the required directories
         if [ ! -d "${{ github.workspace }}/maintenance_page/manifests/staging" ] && [ ! -d "${{ github.workspace }}/maintenance_page/manifests/production" ]; then
