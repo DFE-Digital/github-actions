@@ -1,44 +1,68 @@
 name: Maintenance V2
 description: Enable or disable maintenance for a service with centralized templates
 inputs:
+  # Required inputs
   environment:
     description: Name of the app environment
     required: true
-  azure-credentials:
-    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
-    required: false
-    default: ''
-  azure-client-id:
-    description: Azure service principal or managed identity client ID when using OIDC
-    required: false
-    default: ''
-  azure-subscription-id:
-    description: Azure service principal or managed identity subscription ID when using OIDC
-    required: false
-    default: ''
-  azure-tenant-id:
-    description: Azure service principal or managed identity tenant ID when using OIDC
-    required: false
-    default: ''
   mode:
     description: Maintenance mode to implement, either enable or disable
     required: true
+  
+  # Azure authentication inputs
+  azure-credentials:
+    description: 'JSON string containing service principal credentials'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure tenant ID when using OIDC
+    required: false
+    default: ''
+  
+  # Docker configuration
   docker-repository:
     description: Name of the maint app docker repository
     required: false
   github-token:
-    description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
+    description: GitHub token for repository access
     required: false
+  
+  # Customization inputs (all optional with sensible defaults)
   service-name:
     description: Human-readable service name for the maintenance page
     required: false
     default: 'This service'
-  maintenance-config-path:
-    description: Path to service-specific maintenance configuration file
+  
+  maintenance-message:
+    description: Custom maintenance message to display to users
+    required: false
+    default: 'We are currently carrying out essential maintenance. Please try again later.'
+  
+  contact-email:
+    description: Support contact email to display
     required: false
     default: ''
+  
+  estimated-return-time:
+    description: Estimated time when service will be back (e.g., "15:00" or "3:00 PM")
+    required: false
+    default: ''
+  
+  status-page-url:
+    description: URL to external status page for updates
+    required: false
+    default: ''
+  
   template-ref:
-    description: Reference (branch/tag/commit) of teacher-services-cloud to use for templates
+    description: Branch/tag/commit of teacher-services-cloud repository to use
     required: false
     default: 'main'
 
@@ -65,84 +89,72 @@ runs:
         azure-tenant-id: ${{ inputs.azure-tenant-id }}
         azure-subscription-id: ${{ inputs.azure-subscription-id }}
 
-    - name: Fetch maintenance page templates
+    - name: Fetch and customize maintenance page templates
       if: inputs.mode == 'enable'
       shell: bash
       run: |
         echo "Fetching maintenance page templates from teacher-services-cloud..."
         
-        # Create temp directory for building
-        TEMP_BUILD_DIR=$(mktemp -d)
-        echo "TEMP_BUILD_DIR=$TEMP_BUILD_DIR" >> $GITHUB_ENV
+        # Remove any existing maintenance_page directory and create fresh
+        rm -rf maintenance_page
+        mkdir -p maintenance_page
+        
+        # Create temp directory for cloning
+        TEMP_DIR=$(mktemp -d)
         
         # Clone only the templates directory (sparse checkout)
-        cd $TEMP_BUILD_DIR
+        cd $TEMP_DIR
         git clone --filter=blob:none --sparse https://github.com/DFE-Digital/teacher-services-cloud.git
         cd teacher-services-cloud
         git sparse-checkout set templates/new_service/maintenance_page
         git checkout ${{ inputs.template-ref }}
         
-        # Copy template files to build directory
-        cp -r templates/new_service/maintenance_page $TEMP_BUILD_DIR/maintenance_build
+        # Copy template files to the expected location in workspace
+        cp -r templates/new_service/maintenance_page/* ${{ github.workspace }}/maintenance_page/
+        
+        # Clean up temp directory
+        rm -rf $TEMP_DIR
         
         echo "Templates fetched successfully"
-
-    - name: Apply service customizations
-      if: inputs.mode == 'enable' && inputs.maintenance-config-path != ''
-      shell: bash
-      run: |
+        
+        # Apply customizations
         echo "Applying service customizations..."
+        cd ${{ github.workspace }}
         
-        # Check if service has local customization file
-        if [[ -f "${{ inputs.maintenance-config-path }}" ]]; then
-          echo "Found service configuration at ${{ inputs.maintenance-config-path }}"
-          
-          # Copy service config to build directory
-          cp "${{ inputs.maintenance-config-path }}" $TEMP_BUILD_DIR/maintenance_build/config.json
-          
-          # Apply customizations using jq or sed
-          # This is a simple example - could be enhanced
-          SERVICE_NAME=$(jq -r '.service_name // "This service"' $TEMP_BUILD_DIR/maintenance_build/config.json)
-          
-          # Replace placeholders in HTML
-          sed -i "s/#SERVICE_PRETTY#/$SERVICE_NAME/g" $TEMP_BUILD_DIR/maintenance_build/html/index.html
-          
-          # Apply any custom message if provided
-          if [[ $(jq -r 'has("maintenance_message")' $TEMP_BUILD_DIR/maintenance_build/config.json) == "true" ]]; then
-            # This would require more complex HTML manipulation
-            echo "Custom maintenance message found - would apply here"
-          fi
+        # Replace service name placeholder
+        sed -i "s/#SERVICE_PRETTY#/${{ inputs.service-name }}/g" maintenance_page/html/index.html
+        
+        # Replace maintenance message placeholder
+        ESCAPED_MESSAGE=$(echo "${{ inputs.maintenance-message }}" | sed 's/[[\.*^$()+?{|]/\\&/g')
+        sed -i "s/#MAINTENANCE_MESSAGE#/${ESCAPED_MESSAGE}/g" maintenance_page/html/index.html
+        
+        # Handle estimated return time
+        if [[ -n "${{ inputs.estimated-return-time }}" ]]; then
+          RETURN_HTML="<p class=\"govuk-body\">We expect the service to be available again at: <strong>${{ inputs.estimated-return-time }}</strong></p>"
+          sed -i "s|#ESTIMATED_RETURN#|${RETURN_HTML}|g" maintenance_page/html/index.html
         else
-          echo "No service configuration found, using defaults"
-          # Use the service-name input for basic customization
-          sed -i "s/#SERVICE_PRETTY#/${{ inputs.service-name }}/g" $TEMP_BUILD_DIR/maintenance_build/html/index.html
+          sed -i "s|#ESTIMATED_RETURN#||g" maintenance_page/html/index.html
         fi
-
-    - name: Check for local overrides
-      if: inputs.mode == 'enable'
-      shell: bash
-      run: |
-        echo "Checking for local maintenance page overrides..."
         
-        # If service has local maintenance_page directory with overrides, copy them
-        if [[ -d "maintenance_page" ]]; then
-          echo "Found local maintenance_page directory - applying overrides"
-          
-          # Copy local files over template files (allows partial overrides)
-          # Only copy files that exist, preserving template structure
-          for file in maintenance_page/*; do
-            if [[ -f "$file" ]]; then
-              cp "$file" "$TEMP_BUILD_DIR/maintenance_build/"
-              echo "Override applied: $(basename $file)"
-            fi
-          done
-          
-          # Check for local HTML overrides
-          if [[ -d "maintenance_page/html" ]]; then
-            cp -r maintenance_page/html/* "$TEMP_BUILD_DIR/maintenance_build/html/" 2>/dev/null || true
-            echo "HTML overrides applied"
-          fi
+        # Handle status page URL
+        if [[ -n "${{ inputs.status-page-url }}" ]]; then
+          STATUS_HTML="<p class=\"govuk-body\">For updates, please visit our <a href=\"${{ inputs.status-page-url }}\" class=\"govuk-link\">status page</a>.</p>"
+          sed -i "s|#STATUS_PAGE#|${STATUS_HTML}|g" maintenance_page/html/index.html
+        else
+          sed -i "s|#STATUS_PAGE#||g" maintenance_page/html/index.html
         fi
+        
+        # Handle contact email
+        if [[ -n "${{ inputs.contact-email }}" ]]; then
+          CONTACT_HTML="<li>Email: <a class=\"govuk-link app-!-overflow-break-word govuk-footer__link\" href=\"mailto:${{ inputs.contact-email }}\">${{ inputs.contact-email }}</a></li>"
+          CONTACT_HTML="${CONTACT_HTML}<li>We aim to respond within 5 working days, or one working day for more urgent queries</li>"
+          sed -i "s|#CONTACT_INFO#|${CONTACT_HTML}|g" maintenance_page/html/index.html
+        else
+          # If no email provided, remove the entire Get help section
+          sed -i '/<h2 class="govuk-heading-m">Get help<\/h2>/,/<\/ul>/c\' maintenance_page/html/index.html
+        fi
+        
+        echo "Customizations applied successfully"
 
     - name: Build and push docker image
       if: inputs.mode == 'enable'
@@ -150,15 +162,16 @@ runs:
       uses: DFE-Digital/github-actions/build-docker-image@master
       with:
         github-token: ${{ inputs.github-token }}
-        dockerfile-path: ${{ env.TEMP_BUILD_DIR }}/maintenance_build/Dockerfile
+        dockerfile-path: maintenance_page/Dockerfile
         docker-repository: ${{ inputs.docker-repository }}
-        context: ${{ env.TEMP_BUILD_DIR }}/maintenance_build
+        context: maintenance_page
 
-    - name: Clean up temp directory
-      if: inputs.mode == 'enable'
+    - name: Clean up maintenance page directory
+      if: inputs.mode == 'enable' && always()
       shell: bash
       run: |
-        rm -rf $TEMP_BUILD_DIR
+        rm -rf maintenance_page
+        echo "Maintenance page directory cleaned up"
 
     - name: Enable maintenance mode
       if: inputs.mode == 'enable'
@@ -177,11 +190,32 @@ runs:
       shell: bash
       run: |
         NOW=$(TZ=Europe/London date +"%F %R")
-        echo 'MAINTENANCE PAGE ${{ inputs.mode }}d!' >> $GITHUB_STEP_SUMMARY
-        echo 'ENV: ${{ inputs.environment }}' >> $GITHUB_STEP_SUMMARY
-        echo "AT : ${NOW}" >> $GITHUB_STEP_SUMMARY
+        echo '## 🚧 Maintenance Page ${{ inputs.mode }}d!' >> $GITHUB_STEP_SUMMARY
+        echo '' >> $GITHUB_STEP_SUMMARY
+        echo '| Field | Value |' >> $GITHUB_STEP_SUMMARY
+        echo '|-------|-------|' >> $GITHUB_STEP_SUMMARY
+        echo "| **Environment** | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Time** | ${NOW} (London) |" >> $GITHUB_STEP_SUMMARY
         if [[ "${{ inputs.mode }}" == "enable" ]]; then
-          TEMP_URLS=$(awk '/name:.*cloud/ {print $2}' ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml)
-          echo 'TEMP URLS:' >> $GITHUB_STEP_SUMMARY
-          echo "${TEMP_URLS}" >> $GITHUB_STEP_SUMMARY
+          echo "| **Service** | ${{ inputs.service-name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Message** | ${{ inputs.maintenance-message }} |" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ inputs.estimated-return-time }}" ]]; then
+            echo "| **Estimated Return** | ${{ inputs.estimated-return-time }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${{ inputs.status-page-url }}" ]]; then
+            echo "| **Status Page** | [${{ inputs.status-page-url }}](${{ inputs.status-page-url }}) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${{ inputs.contact-email }}" ]]; then
+            echo "| **Contact** | ${{ inputs.contact-email }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '' >> $GITHUB_STEP_SUMMARY
+          
+          # Check for temp URLs if available
+          if [[ -f ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml ]]; then
+            echo '### Temporary URLs' >> $GITHUB_STEP_SUMMARY
+            TEMP_URLS=$(awk '/name:.*cloud/ {print "- " $2}' ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml 2>/dev/null || true)
+            if [[ -n "$TEMP_URLS" ]]; then
+              echo "$TEMP_URLS" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
         fi
