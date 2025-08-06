@@ -94,6 +94,8 @@ runs:
       shell: bash
       run: |
         echo "Fetching maintenance page templates from teacher-services-cloud..."
+        echo "Current directory: $(pwd)"
+        echo "GitHub workspace: ${{ github.workspace }}"
         
         # Remove any existing maintenance_page directory and create fresh
         rm -rf maintenance_page
@@ -101,6 +103,7 @@ runs:
         
         # Create temp directory for cloning
         TEMP_DIR=$(mktemp -d)
+        echo "Temp directory: $TEMP_DIR"
         
         # Clone only the templates directory (sparse checkout)
         cd $TEMP_DIR
@@ -109,8 +112,16 @@ runs:
         git sparse-checkout set templates/new_service/maintenance_page
         git checkout ${{ inputs.template-ref }}
         
+        # Debug: Check what files we have
+        echo "Files in template directory:"
+        ls -la templates/new_service/maintenance_page/
+        
         # Copy template files to the expected location in workspace
         cp -r templates/new_service/maintenance_page/* ${{ github.workspace }}/maintenance_page/
+        
+        # Debug: Verify files were copied
+        echo "Files in maintenance_page directory:"
+        ls -la ${{ github.workspace }}/maintenance_page/
         
         # Clean up temp directory
         rm -rf $TEMP_DIR
