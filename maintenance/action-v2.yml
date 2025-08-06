@@ -116,8 +116,17 @@ runs:
         echo "Files in template directory:"
         ls -la templates/new_service/maintenance_page/
         
-        # Copy template files to the expected location in workspace
-        cp -r templates/new_service/maintenance_page/* ${{ github.workspace }}/maintenance_page/
+        # Copy template files to the expected location in workspace  
+        # Copy Docker/nginx/html/scripts from templates
+        cp templates/new_service/maintenance_page/Dockerfile ${{ github.workspace }}/maintenance_page/
+        cp templates/new_service/maintenance_page/nginx.conf ${{ github.workspace }}/maintenance_page/
+        cp -r templates/new_service/maintenance_page/html ${{ github.workspace }}/maintenance_page/
+        cp -r templates/new_service/maintenance_page/scripts ${{ github.workspace }}/maintenance_page/
+        
+        # Only copy the maintenance manifests directory (contains deployment and service templates)
+        # Environment-specific manifests (staging/production) should already exist in the service repo
+        mkdir -p ${{ github.workspace }}/maintenance_page/manifests/
+        cp -r templates/new_service/maintenance_page/manifests/maintenance ${{ github.workspace }}/maintenance_page/manifests/
         
         # Debug: Verify files were copied
         echo "Files in maintenance_page directory:"
