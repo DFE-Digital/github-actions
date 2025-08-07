@@ -179,22 +179,29 @@ runs:
         echo "Extracting templates..."
         tar -xzf "${ARCHIVE_NAME}"
         
-        # The archive should contain a maintenance-template directory
-        if [ ! -d "maintenance-template" ]; then
-          echo "Error: Expected maintenance-template directory not found in archive"
+        # The archive contains a maintenance_page directory (from the existing release)
+        # Check if it exists, if not check for maintenance-template (future releases)
+        if [ -d "maintenance_page" ]; then
+          echo "Found maintenance_page directory in archive"
+          TEMPLATE_DIR="maintenance_page"
+        elif [ -d "maintenance-template" ]; then
+          echo "Found maintenance-template directory in archive"
+          TEMPLATE_DIR="maintenance-template"
+        else
+          echo "Error: Neither maintenance_page nor maintenance-template directory found in archive"
           exit 1
         fi
         
         # Copy template files to maintenance_page directory
-        echo "Copying template files..."
+        echo "Copying template files from ${TEMPLATE_DIR}..."
         
         # Copy Dockerfile and nginx.conf
-        cp maintenance-template/Dockerfile maintenance_page/
-        cp maintenance-template/nginx.conf maintenance_page/
+        cp ${TEMPLATE_DIR}/Dockerfile maintenance_page/
+        cp ${TEMPLATE_DIR}/nginx.conf maintenance_page/
         
         # Remove existing html directory and copy fresh from template
         rm -rf maintenance_page/html
-        cp -r maintenance-template/html maintenance_page/
+        cp -r ${TEMPLATE_DIR}/html maintenance_page/
         
         # Check if service has the required directories (manifests and scripts remain in service repo)
         if [ ! -d "${{ github.workspace }}/maintenance_page/manifests/maintenance" ]; then
@@ -216,7 +223,7 @@ runs:
         fi
         
         # Clean up
-        rm -rf maintenance-template
+        rm -rf ${TEMPLATE_DIR}
         rm -f "${ARCHIVE_NAME}"
         
         # Debug: Verify files were copied
