@@ -149,7 +149,8 @@ runs:
         fi
         
         # Construct download URL
-        ARCHIVE_NAME="maintenance-template-${TEMPLATE_VERSION}.tar.gz"
+        # The archive name in the release is just "maintenance-templates.tar.gz" (without version in filename)
+        ARCHIVE_NAME="maintenance-templates.tar.gz"
         DOWNLOAD_URL="https://github.com/DFE-Digital/teacher-services-cloud/releases/download/maintenance-templates-${TEMPLATE_VERSION}/${ARCHIVE_NAME}"
         
         echo "Downloading template version: ${TEMPLATE_VERSION}"
