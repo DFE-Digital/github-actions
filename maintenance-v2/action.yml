@@ -175,33 +175,51 @@ runs:
         
         echo "Downloaded: ${ARCHIVE_NAME} ($(du -h ${ARCHIVE_NAME} | cut -f1))"
         
-        # Extract the archive
+        # Extract the archive to a temporary directory
         echo "Extracting templates..."
-        tar -xzf "${ARCHIVE_NAME}"
+        TEMP_DIR="temp_templates_$$"
+        mkdir -p ${TEMP_DIR}
+        tar -xzf "${ARCHIVE_NAME}" -C ${TEMP_DIR}
         
         # The archive contains a maintenance_page directory (from the existing release)
         # Check if it exists, if not check for maintenance-template (future releases)
-        if [ -d "maintenance_page" ]; then
+        if [ -d "${TEMP_DIR}/maintenance_page" ]; then
           echo "Found maintenance_page directory in archive"
-          TEMPLATE_DIR="maintenance_page"
-        elif [ -d "maintenance-template" ]; then
+          TEMPLATE_DIR="${TEMP_DIR}/maintenance_page"
+        elif [ -d "${TEMP_DIR}/maintenance-template" ]; then
           echo "Found maintenance-template directory in archive"
-          TEMPLATE_DIR="maintenance-template"
+          TEMPLATE_DIR="${TEMP_DIR}/maintenance-template"
         else
           echo "Error: Neither maintenance_page nor maintenance-template directory found in archive"
+          ls -la ${TEMP_DIR}/
           exit 1
         fi
         
         # Copy template files to maintenance_page directory
         echo "Copying template files from ${TEMPLATE_DIR}..."
         
-        # Copy Dockerfile and nginx.conf
-        cp ${TEMPLATE_DIR}/Dockerfile maintenance_page/
-        cp ${TEMPLATE_DIR}/nginx.conf maintenance_page/
+        # Only copy files if they don't already exist (avoid overwriting)
+        if [ ! -f "maintenance_page/Dockerfile" ]; then
+          echo "Copying Dockerfile..."
+          cp ${TEMPLATE_DIR}/Dockerfile maintenance_page/
+        else
+          echo "Dockerfile already exists, skipping..."
+        fi
         
-        # Remove existing html directory and copy fresh from template
-        rm -rf maintenance_page/html
-        cp -r ${TEMPLATE_DIR}/html maintenance_page/
+        if [ ! -f "maintenance_page/nginx.conf" ]; then
+          echo "Copying nginx.conf..."
+          cp ${TEMPLATE_DIR}/nginx.conf maintenance_page/
+        else
+          echo "nginx.conf already exists, skipping..."
+        fi
+        
+        # Copy html directory from template if it doesn't exist
+        if [ ! -d "maintenance_page/html" ]; then
+          echo "Copying html directory..."
+          cp -r ${TEMPLATE_DIR}/html maintenance_page/
+        else
+          echo "html directory already exists, skipping..."
+        fi
         
         # Check if service has the required directories (manifests and scripts remain in service repo)
         if [ ! -d "${{ github.workspace }}/maintenance_page/manifests/maintenance" ]; then
@@ -223,7 +241,7 @@ runs:
         fi
         
         # Clean up
-        rm -rf ${TEMPLATE_DIR}
+        rm -rf ${TEMP_DIR}
         rm -f "${ARCHIVE_NAME}"
         
         # Debug: Verify files were copied
