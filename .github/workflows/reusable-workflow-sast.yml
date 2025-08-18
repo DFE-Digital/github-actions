@@ -122,7 +122,7 @@ jobs:
     if: ${{ (github.actor != 'dependabot[bot]') && (inputs.force_semgrep == true || needs.test-visibility.outputs.visibility == 'private') }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Run the "semgrep scan" command on the command line of the docker image.
       - run: semgrep scan --config auto --sarif --sarif-output=semgrep.sarif --force-color
@@ -161,7 +161,7 @@ jobs:
     steps:
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
         
@@ -242,7 +242,7 @@ jobs:
 
       - name: Advance Security Compliance Action
         if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
-        uses: advanced-security/policy-as-code@v2.10.1
+        uses: advanced-security/policy-as-code@v2.11.1
         with:
           # Set the severity levels which to set the threshold. All previous 
           # severities are included so selecting 'error' also selects 'critical' and 
