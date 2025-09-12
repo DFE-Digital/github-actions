@@ -1,5 +1,5 @@
 name: Send Log Event to Logit.io
-description: Send log record to logit.io
+description: Send log record to logit.io  
 inputs:
   LOGIT-API-KEY:
     description: The Logit.io API key
@@ -13,7 +13,7 @@ inputs:
 runs:
   using: composite
   steps:
-       - name: Send to Logit.io
+       - name: Send to Logit.io 
          shell: bash
          id: send
          run: |
@@ -21,6 +21,5 @@ runs:
                  -H "ApiKey: ${{inputs.LOGIT-API-KEY}}"  \
                  -H "Content-Type: application/json"  \
                  -H "LogType: ${{inputs.logtype}}"  \
-                 https://api-uk1.logit.io/v2  \
-                 -d ${{inputs.JSON }}
-
+                 https://api.logit.io/v2  \
+                 -d ${{inputs.JSON }}     
