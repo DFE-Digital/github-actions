@@ -1,0 +1,224 @@
+name: Validate Infrastructure
+description: Run terraform plan with detailed exit code to validate infrastructure state
+
+inputs:
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ""
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ""
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ""
+  environment:
+    description: Environment to validate (test, platform-test, production)
+    required: true
+  terraform-base:
+    description: Path to the terraform files
+    required: false
+    default: "cluster/terraform_aks_cluster"
+  terraform-version-file:
+    description: Name of the file containing terraform version (e.g., terraform.tf or provider.tf)
+    required: false
+    default: "terraform.tf"
+  slack-webhook:
+    description: Slack webhook URL for notifications
+    required: false
+    default: ""
+  validation-plan:
+    description: 'Which validation plan to execute: aks-infra, domains-env, or domains-infra'
+    required: false
+
+outputs:
+  cluster_drift_detected:
+    description: Whether AKS cluster infrastructure drift was detected
+    value: ${{ steps.cluster_plan.outputs.drift_detected }}
+  domains_env_drift_detected:
+    description: Whether domains environment infrastructure drift was detected
+    value: ${{ steps.domains_env_plan.outputs.drift_detected }}
+  domains_infra_drift_detected:
+    description: Whether domains infrastructure drift was detected
+    value: ${{ steps.domains_infra_plan.outputs.drift_detected }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set environment variables
+      shell: bash
+      run: |
+        # Get the current commit SHA (works for any ref)
+        GIT_COMMIT=$(git rev-parse HEAD)
+        echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+        echo "DOCKER_IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+        echo "Using commit SHA: $GIT_COMMIT"
+
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Set Environment variables
+      id: set_env_var
+      shell: bash
+      run: |
+        terraform_version=$(awk '/{/{f=/^terraform/;next}f' ${{ inputs.terraform-base }}/${{ inputs.terraform-version-file }} | grep -o [0-9\.]*)
+        echo "TERRAFORM_VERSION=$terraform_version" >> $GITHUB_ENV
+
+    - name: Use Terraform ${{ env.TERRAFORM_VERSION }}
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+
+    - name: Set ARM environment variables
+      uses: DFE-Digital/github-actions/set-arm-environment-variables@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+
+    - name: Set kubelogin environment
+      uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Run terraform plan for AKS cluster
+      if: ${{ inputs.validation-plan == 'aks-infra' }}
+      id: cluster_plan
+      shell: bash
+      run: |
+        set +e  # Don't exit on non-zero return codes
+
+        echo "::group::Running terraform plan for AKS cluster (${{ inputs.environment }})"
+        DETAILED_EXITCODE=-detailed-exitcode make ci ${{ inputs.environment }} terraform-plan
+        EXIT_CODE=$?
+        echo "::endgroup::"
+
+        # Set outputs based on exit code
+        # Exit codes:
+        # 0 = No changes
+        # 1 = Error
+        # 2 = Changes detected (drift)
+
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "No AKS cluster infrastructure drift detected"
+          echo "drift_detected=false" >> $GITHUB_OUTPUT
+        elif [ $EXIT_CODE -eq 1 ]; then
+          echo "Error running terraform plan for AKS cluster"
+          echo "drift_detected=error" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ $EXIT_CODE -eq 2 ]; then
+          echo "AKS cluster infrastructure drift detected!"
+          echo "drift_detected=true" >> $GITHUB_OUTPUT
+          echo "::warning::AKS cluster infrastructure drift detected in ${{ inputs.environment }} environment"
+        else
+          echo "Unexpected exit code: $EXIT_CODE"
+          echo "drift_detected=unknown" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+    - name: Run terraform plan for domains environment
+      if: ${{ inputs.environment == 'production' && inputs.validation-plan == 'domains-env' }}
+      id: domains_env_plan
+      shell: bash
+      run: |
+        set +e  # Don't exit on non-zero return codes
+
+        echo "::group::Running terraform plan for domains environment (${{ inputs.environment }})"
+        DETAILED_EXITCODE=-detailed-exitcode make ci ${{ inputs.environment }} domains-plan
+        EXIT_CODE=$?
+        echo "::endgroup::"
+
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "No domains environment infrastructure drift detected"
+          echo "drift_detected=false" >> $GITHUB_OUTPUT
+        elif [ $EXIT_CODE -eq 1 ]; then
+          echo "Error running terraform plan for domains environment"
+          echo "drift_detected=error" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ $EXIT_CODE -eq 2 ]; then
+          echo "Domains environment infrastructure drift detected!"
+          echo "drift_detected=true" >> $GITHUB_OUTPUT
+          echo "::warning::Domains environment infrastructure drift detected in ${{ inputs.environment }} environment"
+        else
+          echo "Unexpected exit code: $EXIT_CODE"
+          echo "drift_detected=unknown" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+    - name: Run terraform plan for domains infrastructure
+      if: ${{ inputs.environment == 'production' && inputs.validation-plan == 'domains-infra' }}
+      id: domains_infra_plan
+      shell: bash
+      run: |
+        set +e  # Don't exit on non-zero return codes
+
+        echo "::group::Running terraform plan for domains infrastructure"
+        DETAILED_EXITCODE=-detailed-exitcode make ci domains-infra-plan
+        EXIT_CODE=$?
+        echo "::endgroup::"
+
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "No domains infrastructure drift detected"
+          echo "drift_detected=false" >> $GITHUB_OUTPUT
+        elif [ $EXIT_CODE -eq 1 ]; then
+          echo "Error running terraform plan for domains infrastructure"
+          echo "drift_detected=error" >> $GITHUB_OUTPUT
+          exit 1
+        elif [ $EXIT_CODE -eq 2 ]; then
+          echo "Domains infrastructure drift detected!"
+          echo "drift_detected=true" >> $GITHUB_OUTPUT
+          echo "::warning::Domains infrastructure drift detected"
+        else
+          echo "Unexpected exit code: $EXIT_CODE"
+          echo "drift_detected=unknown" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+    - name: Slack Notification - AKS Cluster Drift Detected
+      if: steps.cluster_plan.outputs.drift_detected == 'true' && inputs.slack-webhook != '' && inputs.validation-plan == 'aks-infra'
+      uses: rtCamp/action-slack-notify@master
+      env:
+        SLACK_COLOR: warning
+        SLACK_TITLE: AKS Cluster Infrastructure Drift Detected in ${{ inputs.environment }}
+        SLACK_MESSAGE: AKS cluster infrastructure drift detected in ${{ inputs.environment }}
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+
+    - name: Slack Notification - Domains Environment Drift Detected
+      if: inputs.environment == 'production' && steps.domains_env_plan.outputs.drift_detected == 'true' && inputs.slack-webhook != '' && inputs.validation-plan == 'domains-env'
+      uses: rtCamp/action-slack-notify@master
+      env:
+        SLACK_COLOR: warning
+        SLACK_TITLE: Domains Environment Infrastructure Drift Detected in ${{ inputs.environment }}
+        SLACK_MESSAGE: Domains environment infrastructure drift detected in ${{ inputs.environment }}
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+
+    - name: Slack Notification - Domains Infrastructure Drift Detected
+      if: inputs.environment == 'production' && steps.domains_infra_plan.outputs.drift_detected == 'true' && inputs.slack-webhook != '' && inputs.validation-plan == 'domains-infra'
+      uses: rtCamp/action-slack-notify@master
+      env:
+        SLACK_COLOR: warning
+        SLACK_TITLE: Domains Infrastructure Drift Detected
+        SLACK_MESSAGE: Domains infrastructure drift detected
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+
+    - name: Slack Notification - Validation Failed
+      if: failure() && inputs.slack-webhook != ''
+      uses: rtCamp/action-slack-notify@master
+      env:
+        SLACK_COLOR: failure
+        SLACK_TITLE: Infrastructure Validation Failed for ${{ inputs.environment }}
+        SLACK_MESSAGE: Failed to run terraform plan validation for ${{ inputs.environment }}
+        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
