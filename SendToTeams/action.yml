@@ -1,0 +1,68 @@
+name: Send GitHub Notification to Teams
+description: Send an Adaptive Card to Microsoft Teams for Issues and Pull Requests
+inputs:
+  POWER-AUTOMATE-WEBHOOK-URL:
+    description: The Power Automate webhook URL
+    required:    true
+runs:
+  using: composite
+  steps:
+       - name: Send Issue notification to Teams
+         if: ${{ github.event_name == 'issues' }}
+         shell: bash
+         id: send_issue
+         run: |
+            curl -sS -X POST -H "Content-Type: application/json" -d @- "${{ inputs.POWER-AUTOMATE-WEBHOOK-URL }}" <<'JSON'
+            {
+              "type": "message",
+              "attachments": [
+                {
+                  "contentType": "application/vnd.microsoft.card.adaptive",
+                  "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "msteams": { "width": "full" },
+                    "type": "AdaptiveCard",
+                    "version": "1.2",
+                    "body": [
+                      { "type": "Container", "style": "good", "bleed": true, "spacing": "none", "items": [ { "type": "TextBlock", "text": "GitHub Notification" } ] },
+                      { "type": "TextBlock", "text": "Repository: ${{ github.repository }}" },
+                      { "type": "TextBlock", "text": "Event: ${{ github.event_name }} (${{ github.event.action }})" },
+                      { "type": "TextBlock", "text": "Title: ${{ github.event.issue.title }}" },
+                      { "type": "TextBlock", "text": "URL: ${{ github.event.issue.html_url }}" }
+                    ]
+                  }
+                }
+              ]
+            }
+            JSON
+
+       - name: Send Pull Request notification to Teams
+         if: ${{ github.event_name == 'pull_request' }}
+         shell: bash
+         id: send_pr
+         run: |
+            curl -sS -X POST -H "Content-Type: application/json" -d @- "${{ inputs.POWER-AUTOMATE-WEBHOOK-URL }}" <<'JSON'
+            {
+              "type": "message",
+              "attachments": [
+                {
+                  "contentType": "application/vnd.microsoft.card.adaptive",
+                  "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "msteams": { "width": "full" },
+                    "type": "AdaptiveCard",
+                    "version": "1.2",
+                    "body": [
+                      { "type": "Container", "style": "good", "bleed": true, "spacing": "none", "items": [ { "type": "TextBlock", "text": "GitHub Notification" } ] },
+                      { "type": "TextBlock", "text": "Repository: ${{ github.repository }}" },
+                      { "type": "TextBlock", "text": "Event: ${{ github.event_name }} (${{ github.event.action }})" },
+                      { "type": "TextBlock", "text": "Title: ${{ github.event.pull_request.title }}" },
+                      { "type": "TextBlock", "text": "URL: ${{ github.event.pull_request.html_url }}" }
+                    ]
+                  }
+                }
+              ]
+            }
+            JSON     
+
+
