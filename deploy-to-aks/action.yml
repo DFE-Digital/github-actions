@@ -55,7 +55,7 @@ inputs:
     description: enable traffic to maintenance site after deployment
     required: false
     type: boolean
-    default: "false"
+    default: false
 
 outputs:
   environment_url:
