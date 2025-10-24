@@ -54,6 +54,7 @@ inputs:
   maintenance_traffic:
     description: enable traffic to maintenance site after deployment
     required: false
+    type: boolean
     default: "false"
 
 outputs:
@@ -108,7 +109,7 @@ runs:
         DOCKER_IMAGE_TAG: ${{ inputs.sha }}
         PR_NUMBER: ${{ inputs.pr-number }}
         MAINTENANCE_TRAFFIC: ${{ inputs.maintenance_traffic }}
-  
+
     - name: Install kubectl
       if: ${{ ( inputs.db-seed == 'true' && inputs.environment == 'review' ) }}
       uses: DFE-Digital/github-actions/set-kubectl@master

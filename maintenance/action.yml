@@ -29,10 +29,6 @@ inputs:
   github-token:
     description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
     required: false
-  maintenance_traffic:
-    description: enable traffic to maintenance site after deployment
-    required: false
-    default: 'false'
 
 runs:
   using: composite
@@ -73,7 +69,6 @@ runs:
       run: make ci ${{ inputs.environment }} maintenance-fail-over
       env:
         MAINTENANCE_IMAGE_TAG: ${{steps.build-image.outputs.tag}}
-        MAINTENANCE_TRAFFIC: ${{ inputs.maintenance_traffic }}
 
     - name: Disable maintenance mode
       if: inputs.mode == 'disable'
