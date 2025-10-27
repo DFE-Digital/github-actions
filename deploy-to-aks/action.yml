@@ -54,7 +54,6 @@ inputs:
   maintenance_traffic:
     description: enable traffic to maintenance site after deployment
     required: false
-    type: boolean
     default: false
 
 outputs:
