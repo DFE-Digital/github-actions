@@ -131,7 +131,7 @@ runs:
           echo "Check health for $url/${{ inputs.healthcheck }}..."
           curl -sS --fail "$url/${{ inputs.healthcheck }}" > /dev/null
         done
-        if [ ${{ inputs.pr-number }} != '' ]; then
+        if [ -n "${{ inputs.pr-number }}" ]; then
           echo "URLS<<EOF" >> $GITHUB_ENV
           for url in $external_urls; do
             echo $url >> $GITHUB_ENV
