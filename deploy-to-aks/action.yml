@@ -141,7 +141,7 @@ runs:
 
     - name: Post comment to Pull Request ${{ inputs.pr-number }}
       if: inputs.pr-number != ''
-      uses: marocchino/sticky-pull-request-comment@v2
+      uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # Pinned at v2.9.4
       with:
         header: aks
         message: |
@@ -161,7 +161,7 @@ runs:
 
     - name: Notify Slack channel on job failure
       if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.slack-webhook != '' }}
-      uses: rtCamp/action-slack-notify@master
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       env:
         SLACK_USERNAME: CI Deployment
         SLACK_TITLE: Deployment failure

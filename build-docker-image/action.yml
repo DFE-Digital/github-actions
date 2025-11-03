@@ -282,7 +282,7 @@ runs:
         } >> "$GITHUB_ENV"
 
     - name: Notify slack channel on job failure
-      uses: rtCamp/action-slack-notify@master
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.slack-webhook != '' }}
       with:
         SLACK_USERNAME: CI Deployment

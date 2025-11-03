@@ -189,7 +189,7 @@ runs:
 
     - name: Slack Notification - AKS Cluster Drift Detected
       if: steps.cluster_plan.outputs.drift_detected == 'true' && inputs.slack-webhook != '' && inputs.validation-plan == 'aks-infra'
-      uses: rtCamp/action-slack-notify@master
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       env:
         SLACK_COLOR: warning
         SLACK_TITLE: AKS Cluster Infrastructure Drift Detected in ${{ inputs.environment }}
@@ -198,7 +198,7 @@ runs:
 
     - name: Slack Notification - Domains Environment Drift Detected
       if: inputs.environment == 'production' && steps.domains_env_plan.outputs.drift_detected == 'true' && inputs.slack-webhook != '' && inputs.validation-plan == 'domains-env'
-      uses: rtCamp/action-slack-notify@master
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       env:
         SLACK_COLOR: warning
         SLACK_TITLE: Domains Environment Infrastructure Drift Detected in ${{ inputs.environment }}
@@ -207,7 +207,7 @@ runs:
 
     - name: Slack Notification - Domains Infrastructure Drift Detected
       if: inputs.environment == 'production' && steps.domains_infra_plan.outputs.drift_detected == 'true' && inputs.slack-webhook != '' && inputs.validation-plan == 'domains-infra'
-      uses: rtCamp/action-slack-notify@master
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       env:
         SLACK_COLOR: warning
         SLACK_TITLE: Domains Infrastructure Drift Detected
@@ -216,7 +216,7 @@ runs:
 
     - name: Slack Notification - Validation Failed
       if: failure() && inputs.slack-webhook != ''
-      uses: rtCamp/action-slack-notify@master
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       env:
         SLACK_COLOR: failure
         SLACK_TITLE: Infrastructure Validation Failed for ${{ inputs.environment }}

@@ -168,7 +168,7 @@ runs:
 
     - name: Notify Slack channel on job failure
       if: failure()
-      uses: rtCamp/action-slack-notify@v2
+      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
       env:
         SLACK_USERNAME: CI Deployment
         SLACK_TITLE: Database ${{ inputs.db-server-name }} backup failure
