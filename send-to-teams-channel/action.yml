@@ -1,0 +1,142 @@
+name: Send to teams channel
+description: Send message from a github workflow to a MS teams channel
+
+inputs:
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: true
+  title:
+    description: Title of message to post in the channel
+    required: false
+    default: 'Github workflow notification'
+  service:
+    description: Name of the service
+    required: false
+    default: 'Unset'
+  message:
+    description: Message to post in the channel
+    required: false
+    default: 'Unset'
+  status:
+    description: Message status
+    default: attention
+    type: choice
+    options:
+      - good
+      - warning
+      - attention
+  minimal:
+    description: Display full or minimal message
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Set environment variables (push)
+      if: github.event_name == 'push'
+      shell: bash
+      run: |
+        GIT_BRANCH=${GITHUB_REF##*/}
+        echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV # GIT_BRANCH will be main for refs/heads/main
+        echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+    - name: Set environment variables (pull_request)
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        GIT_BRANCH=${GITHUB_HEAD_REF##*/}
+        echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
+        echo "IMAGE_TAG=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+    - name: Set environment variables (default event)
+      if: github.event_name != 'push' && github.event_name != 'pull_request'
+      shell: bash
+      run: |
+        GIT_BRANCH=$(git branch --show-current)
+        echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
+        GIT_COMMIT=$(git rev-parse HEAD)
+        echo "BRANCH_TAG=$BRANCH_TAG" >> $GITHUB_ENV
+        echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+
+    - name: Set short tag
+      shell: bash
+      run: |
+        echo "SHORT_TAG=$(echo ${{ env.IMAGE_TAG }} | cut -c -7)" >> $GITHUB_ENV
+
+    - name: Send minimal notification to teams
+      shell: bash
+      if: inputs.minimal == 'true'
+      run: |
+        curl -sS -X POST -H "Content-Type: application/json" --data-binary @- "${{ inputs.teams-webhook-url }}" <<'JSON'
+        {
+          "type": "message",
+          "attachments": [
+            {
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "msteams": { "width": "full" },
+                "type": "AdaptiveCard",
+                "version": "1.5",
+                "body": [
+                  { "type": "Container", "style": "${{ inputs.status }}", "bleed": true, "spacing": "none", "items": [
+                    { "type": "ColumnSet", "columns": [
+                      { "type": "Column", "items": [
+                        { "type": "TextBlock", "text": "${{ inputs.title }}", "color": "${{ inputs.status }}", "horizontalAlignment": "left", "size": "large" } ] },
+                      { "type": "Column", "items": [
+                        { "type": "TextBlock", "text": "${{ inputs.service }}", "color": "${{ inputs.status }}", "size": "large", "horizontalAlignment": "right", "spacing": "large" } ] } ] },
+                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        JSON
+
+    - name: Send full notification to teams
+      shell: bash
+      if: inputs.minimal != 'true'
+      run: |
+        curl -sS -X POST -H 'Content-Type: application/json' --data-binary @- "${{ inputs.teams-webhook-url }}" <<'JSON'
+        {
+          "type": "message",
+          "attachments": [
+            {
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "msteams": { "width": "full" },
+                "type": "AdaptiveCard",
+                "version": "1.5",
+                "body": [
+                  { "type": "Container", "style": "${{ inputs.status }}", "bleed": true, "spacing": "none", "items": [
+                    { "type": "ColumnSet", "columns": [
+                      { "type": "Column", "items": [
+                        { "type": "TextBlock", "text": "${{ inputs.title }}", "color": "${{ inputs.status }}", "horizontalAlignment": "left", "size": "large" } ] },
+                      { "type": "Column", "items": [
+                        { "type": "TextBlock", "text": "${{ inputs.service }}", "color": "${{ inputs.status }}", "size": "large", "horizontalAlignment": "right", "spacing": "large" } ] } ] },
+                      { "type": "RichTextBlock", "inlines": [
+                        { "type": "TextRun", "text": "${{ github.event_name }}", "weight": "bolder" },
+                        { "type": "TextRun", "text": " event on ", "weight": "lighter" },
+                        { "type": "TextRun", "text": "${{ github.ref }}", "weight": "bolder" } ] },
+                    { "type": "ColumnSet", "columns": [
+                      { "type": "Column", "items": [
+                        { "type": "ActionSet", "actions": [
+                          { "type": "Action.OpenUrl", "title": "Workflow Run", "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" } ] },
+                        { "type": "ActionSet", "actions": [
+                          { "type": "Action.OpenUrl", "title": "${{ env.SHORT_TAG }}", "url": "${{ github.server_url }}/${{ github.repository }}/commit/${{ env.IMAGE_TAG }}" } ] } ] },
+                      { "type": "Column", "items": [
+                        { "type": "ActionSet", "actions": [
+                          { "type": "Action.OpenUrl", "title": "${{ github.actor }}", "url": "https://github.com/${{ github.actor }}" } ] },
+                        { "type": "ActionSet", "actions": [
+                          { "type": "Action.OpenUrl", "title": "${{ env.BRANCH_TAG }}", "url": "${{ github.server_url }}/${{ github.repository }}/tree/${{ env.BRANCH_TAG }}" } ] } ] } ] },
+                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        JSON
