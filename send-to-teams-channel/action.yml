@@ -56,7 +56,6 @@ runs:
         GIT_BRANCH=$(git branch --show-current)
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
         GIT_COMMIT=$(git rev-parse HEAD)
-        echo "BRANCH_TAG=$BRANCH_TAG" >> $GITHUB_ENV
         echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
 
     - name: Set short tag
