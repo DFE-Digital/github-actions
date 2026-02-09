@@ -21,6 +21,9 @@ inputs:
     description: Path to the terraform files
     required: false
     default: "terraform/domains/infrastructure"
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: false
 
 runs:
   using: composite
@@ -61,3 +64,13 @@ runs:
         SLACK_TITLE: Failure deploying domains infrastructure
         SLACK_MESSAGE: Failure deploying domains infrastructure
         SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+
+    - name: Notify teams channel on job failure
+      if: ${{ failure() && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Deploy domains infra
+        service: ${{ ${{ vars.SERVICE_NAME }}
+        message: |
+          Failure deploying domains infrastructure

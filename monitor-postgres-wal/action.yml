@@ -30,6 +30,9 @@ inputs:
     description: Path to the terraform config files
     required: false
     default: "terraform/application/config"
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: false
 
 runs:
   using: composite
@@ -136,3 +139,23 @@ runs:
         SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
         SLACK_COLOR: failure
         SLACK_FOOTER: Sent from monitor database workflow
+
+    - name: Notify teams channel if the replication slot is removed
+      if: ${{ env.REMOVED_SLOT != '' && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: DB monitor
+        service: ${{ ${{ vars.SERVICE_NAME }}
+        message: |
+          ${{ inputs.app-name }} replication slot removed
+
+    - name: Notify teams channel on job failure
+      if: ${{ failure() && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: DB monitor
+        service: ${{ ${{ vars.SERVICE_NAME }}
+        message: |
+          Database monitor workflow failed
