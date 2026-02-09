@@ -36,6 +36,12 @@ inputs:
     default: "main"
   docker-sha:
     required: false
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: false
+  service:
+    description: Name of service, used in teams notification messages
+    required: false
 
 outputs:
   tag:
@@ -292,3 +298,13 @@ runs:
         SLACK_MESSAGE: ':alert: Build failure on commit ${{env.IMAGE_TAG}} :sadparrot:'
         SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
         SLACK_FOOTER: Sent from build-docker-image
+
+    - name: Notify teams channel on job failure
+      if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Build docker image
+        service: ${{ inputs.SERVICE }}
+        message: |
+          Build failure

@@ -32,6 +32,12 @@ inputs:
   validation-plan:
     description: 'Which validation plan to execute: aks-infra, domains-env, or domains-infra'
     required: false
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: false
+  service:
+    description: Name of service, used in teams notification messages
+    required: false
 
 outputs:
   cluster_drift_detected:
@@ -222,3 +228,43 @@ runs:
         SLACK_TITLE: Infrastructure Validation Failed for ${{ inputs.environment }}
         SLACK_MESSAGE: Failed to run terraform plan validation for ${{ inputs.environment }}
         SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+
+    - name: Notify teams channel on job failure
+      if: steps.cluster_plan.outputs.drift_detected == 'true' && inputs.teams-webhook-url != '' && inputs.validation-plan == 'aks-infra'
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Infra Validation
+        service: ${{ inputs.SERVICE }}
+        message: |
+          Infrastructure Drift Detected in ${{ inputs.environment }}
+
+    - name: Notify teams channel on job failure
+      if: inputs.environment == 'production' && steps.domains_env_plan.outputs.drift_detected == 'true' && inputs.teams-webhook-url != '' && inputs.validation-plan == 'domains-env'
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Infra Validation
+        service: ${{ inputs.SERVICE }}
+        message: |
+          Domains environment infrastructure drift detected in ${{ inputs.environment }}
+
+    - name: Notify teams channel on job failure
+      if: inputs.environment == 'production' && steps.domains_infra_plan.outputs.drift_detected == 'true' && inputs.teams-webhook-url != '' && inputs.validation-plan == 'domains-infra'
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Infra Validation
+        service: ${{ inputs.SERVICE }}
+        message: |
+          Domains infrastructure drift detected
+
+    - name: Notify teams channel on job failure
+      if: ${{ failure() && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Infra Validation
+        service: ${{ inputs.SERVICE }}
+        message: |
+          Workflow failed
