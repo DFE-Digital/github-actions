@@ -12,11 +12,11 @@ inputs:
   service:
     description: Name of the service
     required: false
-    default: 'Unset'
+    default: 'NotSet'
   message:
     description: Message to post in the channel
     required: false
-    default: 'Unset'
+    default: 'NotSet'
   status:
     description: Message status
     default: attention
@@ -53,9 +53,9 @@ runs:
       if: github.event_name != 'push' && github.event_name != 'pull_request'
       shell: bash
       run: |
-        GIT_BRANCH=$(git branch --show-current)
+        GIT_BRANCH=$(git branch --show-current || echo "NotSet")
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
-        GIT_COMMIT=$(git rev-parse HEAD)
+        GIT_COMMIT=$(git rev-parse HEAD || echo "NotSet")
         echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
 
     - name: Set short tag
