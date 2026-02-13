@@ -11,8 +11,8 @@ A failure message (status: failure) displays the title in red.
 ## Inputs
 - `teams-webhook-url`: A valid webhook url for the target teams channel
 - `title`: Title of teams message (default: "Workflow notification")
-- `service`: Name of the service (default: "Unset")
-- `messsage`: Message to display (default: "Unset")
+- `service`: Name of the service (default: "NotSet")
+- `messsage`: Message to display (default: "NotSet")
 - `status`: Message status, either good (green), warning (amber), or attention (red) (default: "attention")
 - `minimal` : Send full message or minimal. True of False (default: "false")
 
