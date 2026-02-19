@@ -12,11 +12,11 @@ inputs:
   service:
     description: Name of the service
     required: false
-    default: 'NotSet'
+    default: 'ServiceNotSet'
   message:
     description: Message to post in the channel
     required: false
-    default: 'NotSet'
+    default: 'MessageNotSet'
   status:
     description: Message status
     default: attention
@@ -29,6 +29,10 @@ inputs:
     description: Display full or minimal message
     required: false
     default: 'false'
+  ghrepo:
+    description: is this running from a github repository?
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -40,6 +44,7 @@ runs:
         GIT_BRANCH=${GITHUB_REF##*/}
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV # GIT_BRANCH will be main for refs/heads/main
         echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+        echo "GITHUB_REPO=${{ inputs.ghrepo }}" >> $GITHUB_ENV
 
     - name: Set environment variables (pull_request)
       if: github.event_name == 'pull_request'
@@ -48,6 +53,7 @@ runs:
         GIT_BRANCH=${GITHUB_HEAD_REF##*/}
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
         echo "IMAGE_TAG=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+        echo "GITHUB_REPO=${{ inputs.ghrepo }}" >> $GITHUB_ENV
 
     - name: Set environment variables (default event)
       if: github.event_name != 'push' && github.event_name != 'pull_request'
@@ -57,6 +63,13 @@ runs:
         echo "BRANCH_TAG=$GIT_BRANCH" >> $GITHUB_ENV
         GIT_COMMIT=$(git rev-parse HEAD || echo "NotSet")
         echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+        if [[ "${GIT_BRANCH}" == "NotSet" ]]; then
+          echo "GITHUB_REPO=false" >> $GITHUB_ENV
+        elif [[ "${GIT_COMMIT}" == "NotSet" ]]; then
+          echo "GITHUB_REPO=false" >> $GITHUB_ENV
+        else
+          echo "GITHUB_REPO=true" >> $GITHUB_ENV
+        fi
 
     - name: Set short tag
       shell: bash
@@ -96,7 +109,7 @@ runs:
 
     - name: Send full notification to teams
       shell: bash
-      if: inputs.minimal != 'true'
+      if: ( inputs.minimal != 'true' && env.GITHUB_REPO != 'false' )
       run: |
         curl -sS -X POST -H 'Content-Type: application/json' --data-binary @- "${{ inputs.teams-webhook-url }}" <<'JSON'
         {
@@ -131,6 +144,48 @@ runs:
                           { "type": "Action.OpenUrl", "title": "${{ github.actor }}", "url": "https://github.com/${{ github.actor }}" } ] },
                         { "type": "ActionSet", "actions": [
                           { "type": "Action.OpenUrl", "title": "${{ env.BRANCH_TAG }}", "url": "${{ github.server_url }}/${{ github.repository }}/tree/${{ env.BRANCH_TAG }}" } ] } ] } ] },
+                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+        JSON
+
+    - name: Send workflow notification to teams
+      shell: bash
+      if: ( inputs.minimal != 'true' && env.GITHUB_REPO == 'false' )
+      run: |
+        curl -sS -X POST -H 'Content-Type: application/json' --data-binary @- "${{ inputs.teams-webhook-url }}" <<'JSON'
+        {
+          "type": "message",
+          "attachments": [
+            {
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "msteams": { "width": "full" },
+                "type": "AdaptiveCard",
+                "version": "1.5",
+                "body": [
+                  { "type": "Container", "style": "${{ inputs.status }}", "bleed": true, "spacing": "none", "items": [
+                    { "type": "ColumnSet", "columns": [
+                      { "type": "Column", "items": [
+                        { "type": "TextBlock", "text": "${{ inputs.title }}", "color": "${{ inputs.status }}", "horizontalAlignment": "left", "size": "large" } ] },
+                      { "type": "Column", "items": [
+                        { "type": "TextBlock", "text": "${{ inputs.service }}", "color": "${{ inputs.status }}", "size": "large", "horizontalAlignment": "right", "spacing": "large" } ] } ] },
+                      { "type": "RichTextBlock", "inlines": [
+                        { "type": "TextRun", "text": "${{ github.event_name }}", "weight": "bolder" },
+                        { "type": "TextRun", "text": " event on ", "weight": "lighter" },
+                        { "type": "TextRun", "text": "${{ github.ref }}", "weight": "bolder" } ] },
+                    { "type": "ColumnSet", "columns": [
+                      { "type": "Column", "items": [
+                        { "type": "ActionSet", "actions": [
+                          { "type": "Action.OpenUrl", "title": "Workflow Run", "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" } ] } ] },
+                      { "type": "Column", "items": [
+                        { "type": "ActionSet", "actions": [
+                          { "type": "Action.OpenUrl", "title": "${{ github.actor }}", "url": "https://github.com/${{ github.actor }}" } ] } ] } ] },
                     { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
                   }
                 ]
