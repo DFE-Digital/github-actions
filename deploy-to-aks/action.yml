@@ -51,6 +51,12 @@ inputs:
     description: Path to the terraform files
     required: false
     default: 'terraform/application'
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: false
+  service:
+    description: Name of service, used in teams notification messages
+    required: false
 
 outputs:
   environment_url:
@@ -169,3 +175,13 @@ runs:
         SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
         SLACK_COLOR: failure
         SLACK_FOOTER: Sent from deploy-to-aks
+
+    - name: Notify teams channel on job failure
+      if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Deploy to AKS
+        service: ${{ inputs.SERVICE }}
+        message: |
+          ${{ inputs.environment }} deployment job failed
