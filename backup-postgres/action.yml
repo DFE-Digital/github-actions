@@ -47,6 +47,12 @@ inputs:
       A string of table names to exclude data from while preserving their schema. Use for creating sanitized backups. (Optional, defaults to '')
     required: false
     default: ''
+  teams-webhook-url:
+    description: Valid webhook for the destination teams channel
+    required: false
+  service:
+    description: Name of service, used in teams notification messages
+    required: false
 
 runs:
   using: composite
@@ -176,3 +182,24 @@ runs:
         SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
         SLACK_COLOR: failure
         SLACK_FOOTER: Sent from backup job in backup-db workflow
+
+    - name: Notify teams channel on job failure
+      if: ${{ failure() && inputs.teams-webhook-url != '' }}
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Backup postgres
+        service: ${{ inputs.SERVICE }}
+        message: |
+          Backup failure
+
+    - name: Notify teams channel on job success
+      uses: DFE-Digital/github-actions/send-to-teams-channel@master
+      if: ${{ inputs.teams-webhook-url != '' }}
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        title: Backup postgres
+        service: ${{ inputs.SERVICE }}
+        status: good
+        message: |
+          Backup successful
