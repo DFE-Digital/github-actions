@@ -122,7 +122,7 @@ jobs:
     if: ${{ (github.actor != 'dependabot[bot]') && (inputs.force_semgrep == true || needs.test-visibility.outputs.visibility == 'private') }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Run the "semgrep scan" command on the command line of the docker image.
       - run: semgrep scan --config auto --sarif --sarif-output=semgrep.sarif --force-color
@@ -133,7 +133,7 @@ jobs:
         run: |
           echo report_name=${{ github.run_id }}_${{ github.run_number }}_semgrep >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:  
             name: ${{ steps.name-sarifs.outputs.report_name }}
             path: ${{ github.workspace }}/semgrep.sarif
@@ -161,12 +161,12 @@ jobs:
     steps:
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
         
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           queries: ${{ inputs.queries }}
           config-file: ${{ inputs.config_file }}
@@ -175,7 +175,7 @@ jobs:
         if: ${{ inputs.config_file != '' }}
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           queries: ${{ inputs.queries }}
           languages: ${{ inputs.language }}
@@ -183,7 +183,7 @@ jobs:
         if: ${{ inputs.config_file == '' }}
 
       - name: Setup dotnet ${{ inputs.dotnet_version }}
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ inputs.dotnet_version }}
           source-url: ${{ inputs.nuget-source-url }}
@@ -208,7 +208,7 @@ jobs:
         if: ${{ inputs.language == 'csharp' && inputs.dotnet_build_params != '' }}
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           ref: ${{ inputs.ref }}
           sha: ${{ inputs.sha }}
@@ -242,7 +242,7 @@ jobs:
 
       - name: Advance Security Compliance Action
         if: ${{ env.CODEQL_AUTHENTICATION_PRIVATE_KEY }}
-        uses: advanced-security/policy-as-code@v2.10.1
+        uses: advanced-security/policy-as-code@v2.11.1
         with:
           # Set the severity levels which to set the threshold. All previous 
           # severities are included so selecting 'error' also selects 'critical' and 
