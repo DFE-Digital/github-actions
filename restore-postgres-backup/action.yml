@@ -39,7 +39,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: azure/login@v2
+    - uses: azure/login@v3
       with:
         creds: ${{ inputs.azure-credentials }}
         client-id: ${{ inputs.azure-client-id }}
