@@ -9,6 +9,7 @@ Deploy the Environment Domains
 - `environment`: the name of the environment for the domains (Required)
 - `healthcheck` : Health check path, without first / e.g. 'healthcheck/all' (Optional)
 - `slack-webhook` : A slack webhook to send a slack message to the service tech channel on deploy failure. See https://technical-guidance.education.gov.uk/infrastructure/monitoring/slack/#content (Optional)
+- `teams-webhook-url` : A valid webhook URL for the destination Teams channel (Optional)
 - `terraform-base` : Name of the base terraform path (default: 'terraform/domains/environment')
 
 ## Example
@@ -31,6 +32,6 @@ jobs:
           azure-subscription-id:  ${{ secrets.AZURE_SUBSCRIPTION_ID   }}
           environment: test
           healthcheck: healthcheck/all
-          slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
+          teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
           terraform-base: terraform/domains/environment
 ```

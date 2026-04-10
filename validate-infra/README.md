@@ -34,6 +34,7 @@ Your Makefile's terraform plan commands should use `${DETAILED_EXITCODE}` to inc
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     environment: production
     slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
+    teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
 ```
 
 ## Inputs
@@ -48,6 +49,7 @@ Your Makefile's terraform plan commands should use `${DETAILED_EXITCODE}` to inc
 | `terraform-base`        | Path to the terraform files                                    | No       | `cluster/terraform_aks_cluster` |
 | `terraform-version-file`| Name of file containing terraform version                      | No       | `terraform.tf`                  |
 | `slack-webhook`         | Slack webhook URL for notifications                            | No       | -                               |
+| `teams-webhook-url`     | A valid webhook URL for the destination Teams channel          | No       | -                               |
 
 ## Outputs
 
@@ -96,6 +98,7 @@ jobs:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           environment: ${{ github.event.inputs.environment || 'production' }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
+          teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
 ```
 
 ## Requirements
@@ -107,6 +110,7 @@ jobs:
   - `domains-infra-plan` - Domains infrastructure validation
 - The `ci` and environment targets must be defined in your Makefile
 - (Optional) Slack webhook for notifications
+- (Optional) Teams webhook for notifications
 
 ### Example Makefile Targets
 

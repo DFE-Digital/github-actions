@@ -25,7 +25,7 @@ inputs:
     default: ''
   slack-webhook:
     description: Name of the slack webhook
-    required: true
+    required: false
   tf-vars-path:
     description: Path to the terraform config files
     required: false

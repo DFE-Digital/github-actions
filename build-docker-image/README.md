@@ -70,6 +70,7 @@ e.g.
 - `max-cache`: Set to true to use maximum cache level when reuse-cache is set. Defaults to minimum (false)
 - `extra-cache-repo`: Extra repository to use for cached images (Optional)
 - `slack-webhook`:  A slack webhook to send a slack message to the service tech channel. See https://technical-guidance.education.gov.uk/infrastructure/monitoring/slack/#content (Optional)
+- `teams-webhook-url`: A valid webhook URL for the destination Teams channel (Optional)
 - `main-branch`: The primary repo branch (Default = 'main')
 - `docker-sha`:  The docker sha (Default is the long commit sha)
 
