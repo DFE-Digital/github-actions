@@ -17,7 +17,8 @@ Federated credentials must be set up to allow the action to authenticate to Azur
 - `azure-subscription-id`: Azure service principal or managed identity subscription ID when using OIDC
 - `azure-tenant-id`: Azure service principal or managed identity tenant ID when using OIDC
 - `backup-file`: Name of the backup file. The file will be compressed and the .gz extension added to this name. (Required)
-- `slack-webhook`: A slack webhook to send a slack message to the service tech channel (Required)
+- `slack-webhook`: A slack webhook to send a slack message to the service tech channel (Optional)
+- `teams-webhook-url`: A valid webhook URL for the destination Teams channel (Optional)
 - `db-server-name` : Alternate database server (Optional)
 - `exclude-tables`: A string of table names to exclude data from while preserving their schema. Use for creating sanitized backups. (Optional, defaults to '')
 
@@ -43,7 +44,7 @@ jobs:
           azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           backup-file: backup290224.sql
-          slack-webhook: ${{ env.slack-webhook }}
+          teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
 ```
 
 ### Backup with Excluded Tables
@@ -66,6 +67,6 @@ jobs:
           azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           backup-file: excluded-tables-backup290224.sql
-          slack-webhook: ${{ env.slack-webhook }}
+          teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
           exclude-tables: "users audit_logs sensitive_data"
 ```

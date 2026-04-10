@@ -11,6 +11,7 @@ If logical replication is enabled for a database, then we want to monitor the re
 - `azure-subscription-id`: Azure service principal or managed identity subscription ID when using OIDC
 - `azure-tenant-id`: Azure service principal or managed identity tenant ID when using OIDC
 - `slack-webhook`: A slack webhook to send a slack message to the service tech channel (Optional)
+- `teams-webhook-url`: A valid webhook URL for the destination Teams channel (Optional)
 - `tf-vars-path` : terraform config file path (default: 'terraform/application/config')
 
 ## Requirements
@@ -65,7 +66,7 @@ jobs:
         azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         environment: ${{ matrix.environment }}
-        slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
+        teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
         app-name: ${{ env.SERVICE_NAME }}-${{ matrix.environment }}
         tf-vars-path: ${{ env.TF_VARS_PATH }}
 ```
