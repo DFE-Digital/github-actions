@@ -31,7 +31,7 @@ runs:
         azure-tenant-id: ${{ inputs.azure-tenant-id }}
 
     - name: Set up kubelogin
-      uses: azure/use-kubelogin@v1.2
+      uses: azure/use-kubelogin@v1.3
       with:
         kubelogin-version: 'v0.1.6'
 
