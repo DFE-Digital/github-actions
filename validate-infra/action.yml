@@ -14,6 +14,14 @@ inputs:
     description: Azure service principal or managed identity tenant ID when using OIDC
     required: false
     default: ""
+  gcp-wip:
+    description: The full identifier of the GCP Workload Identity Provider.
+    required: false
+    default: ""
+  gcp-project-id:
+    description: The name of the GCP Project ID.
+    required: false
+    default: ""
   environment:
     description: Environment to validate (test, platform-test, production)
     required: true
@@ -72,6 +80,13 @@ runs:
         client-id: ${{ inputs.azure-client-id }}
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Google auth
+      if: ${{ inputs.gcp-wip != '' }}
+      uses: google-github-actions/auth@v2
+      with:
+        project_id: ${{ inputs.gcp-project-id }}
+        workload_identity_provider: ${{ inputs.gcp-wip }}
 
     - name: Set Environment variables
       id: set_env_var
