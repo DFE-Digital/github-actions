@@ -44,6 +44,8 @@ Your Makefile's terraform plan commands should use `${DETAILED_EXITCODE}` to inc
 | `azure-client-id`       | Azure service principal or managed identity client ID for OIDC | No       | -                               |
 | `azure-subscription-id` | Azure subscription ID for OIDC                                 | No       | -                               |
 | `azure-tenant-id`       | Azure tenant ID for OIDC                                       | No       | -                               |
+| `gcp-wip`               | Full identifier of the GCP Workload Identity Provider          | No       | -                               |
+| `gcp-project-id`        | GCP project ID used for workload identity federation           | No       | -                               |
 | `environment`           | Environment to validate (test, platform-test, production)      | Yes      | -                               |
 | `terraform-main-ref`    | Git ref (branch/tag/SHA) to use for terraform code             | No       | `main`                          |
 | `terraform-base`        | Path to the terraform files                                    | No       | `cluster/terraform_aks_cluster` |
@@ -97,6 +99,8 @@ jobs:
           azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           environment: ${{ github.event.inputs.environment || 'production' }}
+          gcp-wip: ${{ vars.GCP_WIP }}
+          gcp-project-id: ${{ vars.GCP_PROJECT_ID }}
           slack-webhook: ${{ secrets.SLACK_WEBHOOK }}
           teams-webhook-url: ${{ secrets.TEAMS_WEBHOOK_URL }}
 ```
@@ -104,6 +108,7 @@ jobs:
 ## Requirements
 
 - Azure service principal configured for OIDC authentication with GitHub
+- If Terraform uses Google providers, configure GitHub OIDC access and pass `gcp-wip` and `gcp-project-id`
 - Your Makefile must define the following targets that use `${DETAILED_EXITCODE}` variable:
   - `terraform-plan` - AKS cluster validation
   - `domains-plan` - Domains environment validation
@@ -131,4 +136,3 @@ domains-infra-plan:
 - [deploy-domains-infra](../deploy-domains-infra) - Deploy domains infrastructure
 - [set-arm-environment-variables](../set-arm-environment-variables) - Set ARM environment variables
 - [set-kubelogin-environment](../set-kubelogin-environment) - Set up kubelogin for AKS authentication
-
