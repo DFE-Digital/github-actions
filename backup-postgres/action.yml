@@ -64,11 +64,6 @@ runs:
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
 
-    - name: Setup postgres client
-      uses: DFE-Digital/github-actions/install-postgres-client@master
-      with:
-        version: 17
-
     - name: Install kubectl
       uses: DFE-Digital/github-actions/set-kubectl@master
 
