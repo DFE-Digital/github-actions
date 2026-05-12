@@ -60,8 +60,6 @@ runs:
   steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        ref: validate-workflow-test
 
     - name: Set environment variables
       shell: bash
