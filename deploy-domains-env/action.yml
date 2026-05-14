@@ -17,9 +17,6 @@ inputs:
   environment:
     description: the name of the environment for the domains.
     required: true
-  slack-webhook:
-    description: Name of the slack webhook
-    required: false
   healthcheck:
     description: Health check path
     required: false
@@ -73,15 +70,6 @@ runs:
           echo "Check health for $url/${{ inputs.healthcheck }}..."
           curl -sS --fail "$url/${{ inputs.healthcheck }}" > /dev/null
         done
-
-    - name: Slack Notification
-      if: failure()
-      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
-      env:
-        SLACK_COLOR: failure
-        SLACK_TITLE: Failure deploying domains environment to ${{ inputs.environment }}
-        SLACK_MESSAGE: Failure deploying domains environment to ${{ inputs.environment }}
-        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
 
     - name: Notify teams channel on job failure
       if: ${{ failure() && inputs.teams-webhook-url != '' }}

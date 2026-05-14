@@ -6,7 +6,6 @@ Deploy the infrastructure Domains
 - `azure-client-id`: Azure service principal or managed identity client ID when using OIDC
 - `azure-subscription-id`: Azure service principal or managed identity subscription ID when using OIDC
 - `azure-tenant-id`: Azure service principal or managed identity tenant ID when using OIDC
-- `slack-webhook` : A slack webhook to send a slack message to the service tech channel on deploy failure. See https://technical-guidance.education.gov.uk/infrastructure/monitoring/slack/#content (Optional)
 - `teams-webhook-url` : A valid webhook URL for the destination Teams channel (Optional)
 - `terraform-base` : Name of the base terraform path (default: 'terraform/domains/infrastructure')
 
