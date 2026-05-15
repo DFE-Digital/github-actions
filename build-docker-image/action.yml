@@ -29,8 +29,6 @@ inputs:
     description: Use cache from separate repo
     default: ''
     required: false
-  slack-webhook:
-    required: false
   main-branch:
     required: false
     default: "main"
@@ -286,18 +284,6 @@ runs:
           echo 'EXTRA_CACHE_FROM_VAR<<EOF'
           echo EOF
         } >> "$GITHUB_ENV"
-
-    - name: Notify slack channel on job failure
-      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
-      if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.slack-webhook != '' }}
-      with:
-        SLACK_USERNAME: CI Deployment
-        SLACK_COLOR: failure
-        SLACK_ICON_EMOJI: ':github-logo:'
-        SLACK_TITLE: 'Build failure'
-        SLACK_MESSAGE: ':alert: Build failure on commit ${{env.IMAGE_TAG}} :sadparrot:'
-        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
-        SLACK_FOOTER: Sent from build-docker-image
 
     - name: Notify teams channel on job failure
       if: ${{ failure() && github.ref == 'refs/heads/main' && inputs.teams-webhook-url != '' }}

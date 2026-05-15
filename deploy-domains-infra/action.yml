@@ -14,9 +14,6 @@ inputs:
     description: Azure service principal or managed identity tenant ID when using OIDC
     required: false
     default: ''
-  slack-webhook:
-    description: Name of the slack webhook
-    required: false
   terraform-base:
     description: Path to the terraform files
     required: false
@@ -58,15 +55,6 @@ runs:
       shell: bash
       run: |
         make ci domains-infra-apply
-
-    - name: Slack Notification
-      if: failure()
-      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
-      env:
-        SLACK_COLOR: failure
-        SLACK_TITLE: Failure deploying domains infrastructure
-        SLACK_MESSAGE: Failure deploying domains infrastructure
-        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
 
     - name: Notify teams channel on job failure
       if: ${{ failure() && inputs.teams-webhook-url != '' }}

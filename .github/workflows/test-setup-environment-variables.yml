@@ -30,6 +30,3 @@ jobs:
           echo DOMAIN=${{ env.DOMAIN }}
           echo APPLICATION=${{ env.APPLICATION }}
           echo PAAS_APPLICATION_NAME=${{ env.PAAS_APPLICATION_NAME }}
-          echo SLACK_FAILURE=${{ env.SLACK_FAILURE }}
-          echo SLACK_SUCCESS=${{ env.SLACK_SUCCESS }}
-          echo SLACK_ICON=${{ env.SLACK_ICON }}

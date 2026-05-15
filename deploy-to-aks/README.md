@@ -22,7 +22,6 @@ Federated credentials must be set up to allow the action to authenticate to Azur
 - `pr-number`: Pull Request Number if deploying a review app (Optional)
 - `db-seed`: Run seed command after a deployment. Should only be used for review apps (default: false)
 - `sha`: Commit sha corresponding to the docker image tag to be deployed (Required)
-- `slack-webhook` : A slack webhook to send a slack message to the service tech channel on deploy failure. See https://technical-guidance.education.gov.uk/infrastructure/monitoring/slack/#content (Optional)
 - `teams-webhook-url` : A valid webhook URL for the destination Teams channel (Optional)
 - `smoke-test` : Run an application smoke test after deployment (default: false)
 - `healthcheck` : Health check path, without first / e.g. 'healthcheck/all' (Optional)

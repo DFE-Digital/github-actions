@@ -23,9 +23,6 @@ inputs:
     description: Azure service principal or managed identity tenant ID when using OIDC
     required: false
     default: ''
-  slack-webhook:
-    description: Name of the slack webhook
-    required: false
   tf-vars-path:
     description: Path to the terraform config files
     required: false
@@ -120,28 +117,6 @@ runs:
         else
           echo "No replication slot"
         fi
-
-    - name: Notify Slack channel if the replication slot is removed
-      if: ${{ env.REMOVED_SLOT != '' }}
-      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
-      env:
-        SLACK_USERNAME: DB monitor
-        SLACK_TITLE: Database replication slot removed
-        SLACK_MESSAGE: ${{ inputs.app-name }} replication slot removed
-        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
-        SLACK_COLOR: failure
-        SLACK_FOOTER: Sent from monitor database workflow
-
-    - name: Notify Slack channel on job failure
-      if: failure()
-      uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # Pinned at v2.3.3
-      env:
-        SLACK_USERNAME: DB monitor
-        SLACK_TITLE: Database monitor failure
-        SLACK_MESSAGE: ${{ inputs.app-name }} replication monitor job failed
-        SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
-        SLACK_COLOR: failure
-        SLACK_FOOTER: Sent from monitor database workflow
 
     - name: Notify teams channel if the replication slot is removed
       if: ${{ env.REMOVED_SLOT != '' && inputs.teams-webhook-url != '' }}

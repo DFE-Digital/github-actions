@@ -24,11 +24,8 @@ location for these variables.
                     
   - name: Print
     run:  |
-          echo "URL                   = ${{env.SLACK_ICON}}"
           echo "APPLICATION           = ${{env.APPLICATION}}"
           echo "DOCKERHUB_REPOSITORY  = ${{env.DOCKERHUB_REPOSITORY}}"
           echo "DOMAIN                = ${{env.DOMAIN}}"
           echo "PAAS_APPLICATION_NAME = ${{env.PAAS_APPLICATION_NAME}}"
-          echo "SLACK_FAILURE         = ${{env.SLACK_FAILURE}}"
-          echo "SLACK_SUCCESS         = ${{env.SLACK_SUCCESS}}"
 ```
