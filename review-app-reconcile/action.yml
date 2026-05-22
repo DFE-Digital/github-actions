@@ -1,0 +1,156 @@
+name: Reconcile review apps
+description: Delete review apps after reconcile
+inputs:
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
+  resource-group-name:
+    description: azure resource group
+    required: true
+  storage-account-name:
+    description: azure storage account containing terraform state file
+    required: true
+  terraform-base:
+    description: Path to the terraform files
+    required: false
+    default: "terraform/application"
+  service-name:
+    description: division & tenant name
+    required: true
+  github-token:
+    description: github token
+    required: true
+  github-repo:
+    description: Repository name
+    required: true
+  tf-vars-path:
+    description: Path to the terraform vars files
+    required: false
+    default: "terraform/application"
+  global-config-path:
+    description: Path to the global config
+    required: true
+    default: "config/global_config"
+
+outputs:
+  stale_prs:
+    value: ${{ steps.find-stale.outputs.stale_prs }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        token: ${{ inputs.github-token }}
+
+    - name: Set environment variables
+      shell: bash
+      run: |
+        # Load environment-specific configuration
+        source ${{ inputs.global-config-path }}/review.sh
+        tf_vars_file=${{ inputs.tf-vars-path }}/review.tfvars.json
+        # Set Azure environment variables
+        echo "NAMESPACE=$(jq -r '.namespace' ${tf_vars_file})" >> $GITHUB_ENV
+        echo "using tf_vars_file $tf_vars_file"
+
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Install kubectl
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - name: Set AKS credentials
+      shell: bash
+      run: make ci review get-cluster-credentials PULL_REQUEST_NUMBER=1234
+
+    - name: Find stale review apps
+      id: find-stale
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "Finding deployed review apps from AKS deployments..."
+        echo ""
+
+        stale_prs=()
+
+        prs=$(
+          kubectl get deployments -n "$NAMESPACE" -o json |
+          jq -r --arg service_name "${{ inputs.service-name }}" '
+            .items[]
+            | select(.metadata.name | test("^" + $service_name + "-review-[0-9]+-worker$"))
+            | .metadata.name
+          ' |
+          sed -n "s/^${{ inputs.service-name }}-review-\([0-9]\+\)-worker$/\1/p" |
+          sort -n
+        )
+
+        if [[ -z "$prs" ]]; then
+          echo "No deployed review apps found."
+          echo "stale_prs=[]" >> "$GITHUB_OUTPUT"
+          echo "stale_count=0" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        for pr in $prs; do
+          pr_json=$(gh pr view "$pr" \
+            --repo "${{ inputs.github-repo }}" \
+            --json number,state,mergeable,title,url \
+            2>/dev/null || true)
+
+          if [[ -z "$pr_json" ]]; then
+            echo "PR #$pr | NOT_FOUND | stale review app will be removed"
+            stale_prs+=("$pr")
+            continue
+          fi
+
+          state=$(echo "$pr_json" | jq -r '.state')
+          mergeable=$(echo "$pr_json" | jq -r '.mergeable')
+          title=$(echo "$pr_json" | jq -r '.title')
+          url=$(echo "$pr_json" | jq -r '.url')
+
+          if [[ "$state" != "OPEN" ]]; then
+            echo "PR #$pr | $state | mergeable=$mergeable | $title"
+            echo "$url"
+            echo ""
+            stale_prs+=("$pr")
+          fi
+        done
+
+        stale_json=$(printf '%s\n' "${stale_prs[@]}" | jq -R . | jq -s -c .)
+        stale_count=$(echo "$stale_json" | jq 'length')
+
+        echo ""
+        echo "Stale PRs:"
+        echo "$stale_json"
+
+        echo ""
+        echo "========================================="
+        echo "Stale review apps found: $stale_count"
+        echo "========================================="
+
+        echo "stale_prs=$stale_json" >> "$GITHUB_OUTPUT"
+        echo "stale_count=$stale_count" >> "$GITHUB_OUTPUT"
