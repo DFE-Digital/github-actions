@@ -140,8 +140,13 @@ runs:
           fi
         done
 
-        stale_json=$(printf '%s\n' "${stale_prs[@]}" | jq -R . | jq -s -c .)
-        stale_count=$(echo "$stale_json" | jq 'length')
+        if (( ${#stale_prs[@]} == 0 )); then
+          stale_json="[]"
+        else
+          stale_json=$(printf '%s\n' "${stale_prs[@]}" | jq -R . | jq -s -c .)
+        fi
+
+        stale_count=$(jq 'length' <<< "$stale_json")
 
         echo ""
         echo "Stale PRs:"
