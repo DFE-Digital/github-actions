@@ -6,15 +6,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (repo and reusable workflows): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -25,15 +16,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (AddTrelloComment): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -44,15 +26,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (backup-postgres): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -63,15 +36,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (build-docker-image): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -82,15 +46,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (CheckServicePrincipal): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -101,15 +56,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (CopyPRtoRelease): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -120,15 +66,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (DraftReleaseByTag): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -139,15 +76,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (GenerateReleaseFromSHA): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -158,15 +86,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (install-postgres-client): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -177,15 +96,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (ptr-postgres): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -196,15 +106,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (restore-postgres-backup): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -215,15 +116,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (SendToLogit): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -234,15 +126,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (set-arm-environment-variables): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -253,15 +136,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (set-kubectl): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -272,15 +146,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (set-kubelogin-environment): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -291,15 +156,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (set-up-environment): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
@@ -310,15 +166,6 @@ updates:
       interval: "weekly"
     commit-message: 
       prefix: "Dependabot (validate-key-vault-secrets): "
-    groups: 
-      gh-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
-      gh-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
     labels:
       - "DevOps"
       - "dependencies"
