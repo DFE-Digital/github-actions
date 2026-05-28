@@ -111,10 +111,14 @@ jobs:
 
        - name: Delete stale review app
          uses: DFE-Digital/github-actions/delete-review-app@master
+         env:
+           PULL_REQUEST_NUMBER: ${{ matrix.pr_number }}
          with:
            azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
            azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
            azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+           gcp-wip: projects/808138694727/locations/global/workloadIdentityPools/register-early-career-teachers-p/provider-p/register-early-career-teachers-p
+           gcp-project-id: ecf-bq
            terraform-base: ${{ env.TERRAFORM_BASE }}
            gcp-wip: ${{ vars.GCP_WIP }}
            gcp-project-id: ${{ vars.GCP_PROJECT_ID }}
