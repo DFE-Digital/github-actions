@@ -77,6 +77,13 @@ runs:
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
 
+    - name: Check Azure login inputs
+      shell: bash
+      run: |
+        [[ -n "${{ inputs.azure-client-id }}" ]] && echo "client-id present" || echo "client-id MISSING"
+        [[ -n "${{ inputs.azure-tenant-id }}" ]] && echo "tenant-id present" || echo "tenant-id MISSING"
+        [[ -n "${{ inputs.azure-subscription-id }}" ]] && echo "subscription-id present" || echo "subscription-id MISSING"
+
     - name: Log in to Docker Hub cache ACR
       shell: bash
       run: az acr login --name s189d01tsccluster4dockerhub
