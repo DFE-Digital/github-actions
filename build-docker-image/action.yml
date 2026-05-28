@@ -58,6 +58,10 @@ runs:
         $DockerRepository = "${{ inputs.docker-repository }}".ToLower()
         "DOCKER_REPOSITORY=$DockerRepository" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+    - name: Log in to Docker Hub cache ACR
+      shell: bash
+      run: az acr login --name s189d01tsccluster4dockerhub
+
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
