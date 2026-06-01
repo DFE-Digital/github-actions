@@ -152,7 +152,7 @@ runs:
         fi
 
     - name: Build docker image using inline cache
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'false' ) }}
       with:
         tags: |
@@ -173,7 +173,7 @@ runs:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
     - name: Build docker image without reusing inline cache
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       if: ${{ ( inputs.reuse-cache == 'false' && inputs.max-cache == 'false' ) }}
       with:
         tags: |
@@ -193,7 +193,7 @@ runs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build docker image using max cache
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       if: ${{ ( inputs.reuse-cache == 'true' && inputs.max-cache == 'true' ) }}
       with:
         tags: |
@@ -215,7 +215,7 @@ runs:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
     - name: Build docker image without reusing max cache
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       if: ${{ ( inputs.reuse-cache == 'false' && inputs.max-cache == 'true' ) }}
       with:
         tags: |
