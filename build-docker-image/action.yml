@@ -190,7 +190,7 @@ runs:
 
     - name: Set up Docker Buildx
       if: ${{ inputs.max-cache == 'true' }}
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build docker image using max cache
       uses: docker/build-push-action@v7
