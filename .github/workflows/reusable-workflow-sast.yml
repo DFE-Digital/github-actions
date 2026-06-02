@@ -122,7 +122,7 @@ jobs:
     if: ${{ (github.actor != 'dependabot[bot]') && (inputs.force_semgrep == true || needs.test-visibility.outputs.visibility == 'private') }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Run the "semgrep scan" command on the command line of the docker image.
       - run: semgrep scan --config auto --sarif --sarif-output=semgrep.sarif --force-color
@@ -161,7 +161,7 @@ jobs:
     steps:
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
         
