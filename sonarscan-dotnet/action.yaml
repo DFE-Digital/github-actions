@@ -91,7 +91,7 @@ runs:
         dotnet tool restore || true
 
         # Check if scanner is usable
-        if dotnet tool run dotnet-sonarscanner --version > /dev/null 2>&1; then
+        if dotnet tool list --local | grep -q dotnet-sonarscanner; then
           echo "Using dotnet-sonarscanner from tool manifest or existing install."
         else
           echo "Installing dotnet-sonarscanner globally..."
