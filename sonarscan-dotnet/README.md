@@ -40,10 +40,9 @@ Add the action as a step in your workflow:
 
 ```yaml
 - name: SonarCloud scan
-  uses: DFE-Digital/github-actions/dotnet-sonarscan@main
+  uses: DFE-Digital/github-actions/sonarscan-dotnet@main
   with:
     sonarcloud-project-key: your_project_key
-    sonarcloud-organisation: dfe-digital
     sonarcloud-token: ${{ secrets.SONAR_TOKEN }}
 ```
 
@@ -55,16 +54,15 @@ Add the action as a step in your workflow:
 - name: Download merged coverage
   uses: actions/download-artifact@v4
   with:
-    name: merged-coverage-report
-    path: merged-coverage-reports
+    name: coverage
+    path: coverage-reports
 
 - name: SonarCloud scan
-  uses: DFE-Digital/github-actions/dotnet-sonarscan@main
+  uses: DFE-Digital/github-actions/sonarscan-dotnet@main
   with:
     sonarcloud-project-key: your_project_key
-    sonarcloud-organisation: dfe-digital
     sonarcloud-token: ${{ secrets.SONAR_TOKEN }}
-    coverage-report-path: merged-coverage-reports/SonarQube.xml
+    coverage-report-path: coverage-reports/SonarQube.xml
 ```
 
 ---
@@ -73,11 +71,11 @@ Add the action as a step in your workflow:
 
 ```yaml
 - name: SonarCloud scan
-  uses: DFE-Digital/github-actions/dotnet-sonarscan@main
+  uses: DFE-Digital/github-actions/sonarscan-dotnet@main
   with:
     sonarcloud-project-key: your_project_key
     sonarcloud-token: ${{ secrets.SONAR_TOKEN }}
-    use-global-json: "true"
+    use-global-json: true
 ```
 
 If `use-global-json` is true, a `global.json` file must exist in the repository.
