@@ -26,13 +26,13 @@ It:
 - `dotnet-version`: .NET SDK version used when not using global.json
 - `dotnet-tool-restore`: Runs `dotnet tool restore` when true
 - `java-distribution`: Java distribution used by SonarScanner (e.g. zulu, temurin, microsoft) (Default: zulu)
-- `java-version`: Java version used by SonarScanner (Default: 17)
-- `sonarcloud-project-key`: SonarCloud project key (Required)
-- `sonarcloud-organisation`: SonarCloud organisation (Required, Default: dfe-digital)
-- `sonarcloud-token`: SonarCloud authentication token (Required)
-- `sonarcloud-url`: SonarCloud server URL (Default: https://sonarcloud.io)
+- `java-version`: Java version used by SonarScanner
+- `sonarcloud-project-key`: SonarCloud project key
+- `sonarcloud-organisation`: SonarCloud organisation (Default: dfe-digital)
+- `sonarcloud-token`: SonarCloud authentication token
+- `sonarcloud-url`: SonarCloud server URL
 - `sonarscan-args`: Additional SonarScanner arguments (e.g. /d:sonar.*)
-- `use-global-json`: Uses global.json to select the SDK (Default: false)
+- `use-global-json`: Uses global.json to select the SDK
 
 ## Usage
 
