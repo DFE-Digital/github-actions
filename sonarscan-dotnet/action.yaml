@@ -109,7 +109,11 @@ runs:
       shell: bash
       run: |
         set -e
-        
+
+        # Mask the SonarCloud token so it is redacted from any logs
+        echo "SONAR_TOKEN=${{ inputs.sonarcloud-token }}" >> $GITHUB_ENV
+        echo "::add-mask::$SONAR_TOKEN"
+
         echo "Starting SonarCloud analysis for ${{ inputs.sonarcloud-project-key }}"
 
         if [ -n "${{ inputs.coverage-report-path }}" ]; then
@@ -122,7 +126,7 @@ runs:
           /o:"${{ inputs.sonarcloud-organisation }}" \
           /k:"${{ inputs.sonarcloud-project-key }}" \
           /d:sonar.host.url="${{ inputs.sonarcloud-url }}" \
-          /d:sonar.token="${{ inputs.sonarcloud-token }}" \
+          /d:sonar.token="$SONAR_TOKEN" \
           ${COVERAGE_ARG} \
           /d:sonar.coverage.exclusions="${{ inputs.coverage-exclusions }}" \
           /d:sonar.scanner.skipJreProvisioning=true \
@@ -137,4 +141,4 @@ runs:
       shell: bash
       run: |
         dotnet tool run dotnet-sonarscanner end \
-          /d:sonar.token="${{ inputs.sonarcloud-token }}"
+          /d:sonar.token="$SONAR_TOKEN"
