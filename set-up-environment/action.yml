@@ -1,3 +1,4 @@
+# Test comment to trigger workflow run
 name: Setup environment variables from file
 description: Will set contents of a yaml file as environment variable
 inputs:
