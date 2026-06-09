@@ -30,3 +30,15 @@ jobs:
           echo DOMAIN=${{ env.DOMAIN }}
           echo APPLICATION=${{ env.APPLICATION }}
           echo PAAS_APPLICATION_NAME=${{ env.PAAS_APPLICATION_NAME }}
+
+      - name: Test marocchino update
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # Pinned at v3.0.4
+        with:
+          header: aks
+          message: |
+            ### Testing
+
+            | Test variables for comment:                                                                                     |
+            | ---------------------------------------------------------------------------------------- |
+            | ${{ env.TEAM_NAME }} |
+            | ${{ env.APPLICATION }} |
