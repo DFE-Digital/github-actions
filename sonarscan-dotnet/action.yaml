@@ -111,8 +111,10 @@ runs:
         set -e
 
         # Mask the SonarCloud token so it is redacted from any logs
-        echo "SONAR_TOKEN=${{ inputs.sonarcloud-token }}" >> $GITHUB_ENV
-        echo "::add-mask::$SONAR_TOKEN"
+        
+        TOKEN="${{ inputs.sonarcloud-token }}"
+        echo "::add-mask::$TOKEN"
+        echo "SONAR_TOKEN=$TOKEN" >> $GITHUB_ENV
 
         echo "Starting SonarCloud analysis for ${{ inputs.sonarcloud-project-key }}"
 
