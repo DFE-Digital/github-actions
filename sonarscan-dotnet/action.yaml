@@ -128,7 +128,7 @@ runs:
           /o:"${{ inputs.sonarcloud-organisation }}" \
           /k:"${{ inputs.sonarcloud-project-key }}" \
           /d:sonar.host.url="${{ inputs.sonarcloud-url }}" \
-          /d:sonar.token="$SONAR_TOKEN" \
+          /d:sonar.token="$TOKEN" \
           ${COVERAGE_ARG} \
           /d:sonar.coverage.exclusions="${{ inputs.coverage-exclusions }}" \
           /d:sonar.scanner.skipJreProvisioning=true \
