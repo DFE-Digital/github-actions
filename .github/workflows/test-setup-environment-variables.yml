@@ -8,8 +8,7 @@ on:
     - 'set-up-environment/**'  
   push:
     paths:
-    - 'set-up-environment/**'
-  workflow_dispatch:    
+    - 'set-up-environment/**'    
 
 jobs:
   set-up-environment:
