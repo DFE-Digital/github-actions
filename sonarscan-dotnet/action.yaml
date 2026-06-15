@@ -1,0 +1,146 @@
+name: "Dotnet SonarCloud Scan"
+description: "Runs SonarCloud analysis by wrapping a dotnet build with SonarScanner begin and end steps."
+
+inputs:
+  build-command:
+    description: "The command used to build the application. Executed between SonarScanner begin and end steps."
+    required: true
+    default: "dotnet build"
+
+  coverage-report-path:
+    description: "Path to the Sonar-compatible coverage report (e.g. SonarQube.xml)."
+    required: false
+
+  coverage-exclusions:
+    description: "Comma-separated list of coverage exclusion patterns."
+    required: false
+    default: "**/*.html,**/*.json,**/wwwroot/**,**/Migrations/**,**/bin/**,**/obj/**"
+
+  dotnet-version:
+    description: "The .NET SDK version to install when not using global.json."
+    required: false
+    default: "8.0.x"
+
+  dotnet-tool-restore:
+    description: "If true, runs dotnet tool restore."
+    required: false
+    default: "true"
+
+  java-distribution:
+    description: "Java distribution (e.g. zulu, temurin, microsoft) for SonarScanner."
+    required: false
+    default: "zulu"
+
+  java-version:
+    description: "Java version used by SonarScanner."
+    required: false
+    default: "17"
+
+  sonarcloud-project-key:
+    description: "SonarCloud project key."
+    required: true
+
+  sonarcloud-organisation:
+    description: "SonarCloud organisation."
+    required: true
+    default: "dfe-digital"
+
+  sonarcloud-token:
+    description: "SonarCloud authentication token."
+    required: true
+
+  sonarcloud-url:
+    description: "The SonarCloud server URL (typically https://sonarcloud.io)."
+    required: false
+    default: "https://sonarcloud.io"
+
+  sonarscan-args:
+    description: "Additional SonarScanner arguments."
+    required: false
+    default: ""
+
+  use-global-json:
+    description: "Use global.json to select SDK."
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup .NET (global.json)
+      if: inputs.use-global-json == 'true'
+      uses: actions/setup-dotnet@v4
+      with:
+        global-json-file: global.json
+
+    - name: Setup .NET (fallback to dotnet-version)
+      if: inputs.use-global-json != 'true'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - name: Ensure SonarScanner is available
+      if: inputs.dotnet-tool-restore == 'true'
+      shell: bash
+      run: |
+        set -e
+
+        echo "Ensuring dotnet-sonarscanner is available..."
+
+        # Attempt to restore tools
+        dotnet tool restore || true
+
+        # Check if scanner is usable
+        if dotnet tool list --local | grep -q dotnet-sonarscanner; then
+          echo "Using dotnet-sonarscanner from tool manifest or existing install."
+        else
+          echo "Installing dotnet-sonarscanner globally..."
+          dotnet tool install --global dotnet-sonarscanner
+          export PATH="$PATH:$HOME/.dotnet/tools"
+        fi
+
+    - name: Setup Java for SonarScanner
+      uses: actions/setup-java@v5
+      with:
+        distribution: ${{ inputs.java-distribution }}
+        java-version: ${{ inputs.java-version }}
+
+    - name: Begin Sonar
+      shell: bash
+      run: |
+        set -e
+
+        # Mask the SonarCloud token so it is redacted from any logs
+        
+        TOKEN="${{ inputs.sonarcloud-token }}"
+        echo "::add-mask::$TOKEN"
+        echo "SONAR_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+        echo "Starting SonarCloud analysis for ${{ inputs.sonarcloud-project-key }}"
+
+        if [ -n "${{ inputs.coverage-report-path }}" ]; then
+          COVERAGE_ARG="/d:sonar.coverageReportPaths=${{ inputs.coverage-report-path }}"
+        else
+          COVERAGE_ARG=""
+        fi
+
+        dotnet tool run dotnet-sonarscanner begin \
+          /o:"${{ inputs.sonarcloud-organisation }}" \
+          /k:"${{ inputs.sonarcloud-project-key }}" \
+          /d:sonar.host.url="${{ inputs.sonarcloud-url }}" \
+          /d:sonar.token="$TOKEN" \
+          ${COVERAGE_ARG} \
+          /d:sonar.coverage.exclusions="${{ inputs.coverage-exclusions }}" \
+          /d:sonar.scanner.skipJreProvisioning=true \
+          ${{ inputs.sonarscan-args }}
+
+    - name: Build
+      run: ${{ inputs.build-command }}
+      shell: bash
+
+    - name: End Sonar
+      if: always()
+      shell: bash
+      run: |
+        dotnet tool run dotnet-sonarscanner end \
+          /d:sonar.token="$SONAR_TOKEN"
