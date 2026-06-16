@@ -34,7 +34,7 @@ inputs:
     required: false
     default: "terraform.tf"
   validation-plan:
-    description: 'Which validation plan to execute: aks-infra, domains-env, or domains-infra'
+    description: "Which validation plan to execute: aks-infra, domains-env, or domains-infra"
     required: false
   teams-webhook-url:
     description: Valid webhook for the destination teams channel
@@ -42,6 +42,18 @@ inputs:
   service:
     description: Name of service, used in teams notification messages
     required: false
+  target-branch:
+    description: Branch name to compare to production
+    required: false
+    default: "main"
+  image-prefix:
+    description: Prefix for the docker image name
+    required: false
+    default: ""
+  sha-type:
+    description: Long or 7 character short
+    required: false
+    default: "long"
 
 outputs:
   cluster_drift_detected:
@@ -59,15 +71,28 @@ runs:
 
   steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ inputs.target-branch != '' && inputs.target-branch || 'main' }}
 
     - name: Set environment variables
       shell: bash
       run: |
         # Get the current commit SHA (works for any ref)
-        GIT_COMMIT=$(git rev-parse HEAD)
+        SHA_TYPE="${{ inputs.sha-type }}"
+        echo "sha-type input = $SHA_TYPE"
+        echo "target-branch = ${{ inputs.target-branch }}"
+        echo "image-prefix = ${{ inputs.image-prefix }}"
+
+        if [[ "$SHA_TYPE" == "long" ]]; then
+          GIT_COMMIT="${{ inputs.image-prefix }}$(git rev-parse HEAD)"
+        else
+          GIT_COMMIT="${{ inputs.image-prefix }}$(git rev-parse --short=7 HEAD)"
+        fi
+
         echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
         echo "DOCKER_IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+        echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
         echo "Using commit SHA: $GIT_COMMIT"
 
     - name: Azure login
