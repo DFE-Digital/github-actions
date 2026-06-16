@@ -4,7 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (repo and reusable workflows): "
     labels:
       - "DevOps"
@@ -14,28 +14,8 @@ updates:
     directory: "/AddTrelloComment"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (AddTrelloComment): "
-    labels:
-      - "DevOps"
-      - "dependencies"
-
-  - package-ecosystem: "github-actions"
-    directory: "/backup-postgres"
-    schedule:
-      interval: "weekly"
-    commit-message: 
-      prefix: "Dependabot (backup-postgres): "
-    labels:
-      - "DevOps"
-      - "dependencies"
-
-  - package-ecosystem: "github-actions"
-    directory: "/build-docker-image"
-    schedule:
-      interval: "weekly"
-    commit-message: 
-      prefix: "Dependabot (build-docker-image): "
     labels:
       - "DevOps"
       - "dependencies"
@@ -44,7 +24,7 @@ updates:
     directory: "/CheckServicePrincipal"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (CheckServicePrincipal): "
     labels:
       - "DevOps"
@@ -54,17 +34,17 @@ updates:
     directory: "/CopyPRtoRelease"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (CopyPRtoRelease): "
     labels:
       - "DevOps"
       - "dependencies"
-          
+
   - package-ecosystem: "github-actions"
     directory: "/DraftReleaseByTag"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (DraftReleaseByTag): "
     labels:
       - "DevOps"
@@ -74,38 +54,8 @@ updates:
     directory: "/GenerateReleaseFromSHA"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (GenerateReleaseFromSHA): "
-    labels:
-      - "DevOps"
-      - "dependencies"
-
-  - package-ecosystem: "github-actions"
-    directory: "/install-postgres-client"
-    schedule:
-      interval: "weekly"
-    commit-message: 
-      prefix: "Dependabot (install-postgres-client): "
-    labels:
-      - "DevOps"
-      - "dependencies"
-
-  - package-ecosystem: "github-actions"
-    directory: "/ptr-postgres"
-    schedule:
-      interval: "weekly"
-    commit-message: 
-      prefix: "Dependabot (ptr-postgres): "
-    labels:
-      - "DevOps"
-      - "dependencies"
-          
-  - package-ecosystem: "github-actions"
-    directory: "/restore-postgres-backup"
-    schedule:
-      interval: "weekly"
-    commit-message: 
-      prefix: "Dependabot (restore-postgres-backup): "
     labels:
       - "DevOps"
       - "dependencies"
@@ -114,8 +64,178 @@ updates:
     directory: "/SendToLogit"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (SendToLogit): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/backup-postgres"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (backup-postgres): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/build-docker-image"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (build-docker-image): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/delete-review-app"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (delete-review-app): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/deploy-domains-env"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (deploy-domains-env): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/deploy-domains-infra"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (deploy-domains-infra): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/deploy-to-aks"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (deploy-to-aks): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/fix-airbyte-lsn"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (fix-airbyte-lsn): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/fix-airbyte-replication-slot"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (fix-airbyte-replication-slot): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/install-postgres-client"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (install-postgres-client): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/maintenance"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (maintenance): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/monitor-postgres-wal"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (monitor-postgres-wal): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/ptr-postgres"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (ptr-postgres): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/restore-deleted-postgres"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (restore-deleted-postgres): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/restore-postgres-backup"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (restore-postgres-backup): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/review-app-reconcile"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (review-app-reconcile): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/sast-reusable-workflow"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (sast-reusable-workflow): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/send-to-teams-channel"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (send-to-teams-channel): "
     labels:
       - "DevOps"
       - "dependencies"
@@ -124,7 +244,7 @@ updates:
     directory: "/set-arm-environment-variables"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (set-arm-environment-variables): "
     labels:
       - "DevOps"
@@ -134,17 +254,17 @@ updates:
     directory: "/set-kubectl"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (set-kubectl): "
     labels:
       - "DevOps"
       - "dependencies"
-          
+
   - package-ecosystem: "github-actions"
     directory: "/set-kubelogin-environment"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (set-kubelogin-environment): "
     labels:
       - "DevOps"
@@ -154,8 +274,28 @@ updates:
     directory: "/set-up-environment"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (set-up-environment): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/sonarscan-dotnet"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (sonarscan-dotnet): "
+    labels:
+      - "DevOps"
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/validate-infra"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "Dependabot (validate-infra): "
     labels:
       - "DevOps"
       - "dependencies"
@@ -164,8 +304,9 @@ updates:
     directory: "/validate-key-vault-secrets"
     schedule:
       interval: "weekly"
-    commit-message: 
+    commit-message:
       prefix: "Dependabot (validate-key-vault-secrets): "
     labels:
       - "DevOps"
       - "dependencies"
+
