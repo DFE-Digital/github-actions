@@ -91,6 +91,7 @@ runs:
         fi
 
         echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+        echo "DOCKER_IMAGE=$GIT_COMMIT" >> $GITHUB_ENV
         echo "DOCKER_IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
         echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
         echo "Using commit SHA: $GIT_COMMIT"
