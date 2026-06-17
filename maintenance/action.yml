@@ -33,12 +33,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: azure/login@v2
+    - uses: azure/login@v3
       if: inputs.azure-credentials != ''
       with:
         creds: ${{ inputs.azure-credentials }}
 
-    - uses: azure/login@v2
+    - uses: azure/login@v3
       if: inputs.azure-credentials == ''
       with:
         client-id: ${{ inputs.azure-client-id }}
