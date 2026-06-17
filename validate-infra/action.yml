@@ -54,6 +54,22 @@ inputs:
     description: Long or 7 character short
     required: false
     default: "long"
+    type: choice
+    options:
+      - long
+      - short
+  service-name:
+    description: The hyphenated name of the service
+    required: false
+    default: ""
+  docker-repo:
+    description: Whether the docker repo is required
+    required: false
+    default: "false"
+    type: choice
+    options:
+      - true
+      - false
 
 outputs:
   cluster_drift_detected:
@@ -78,23 +94,39 @@ runs:
     - name: Set environment variables
       shell: bash
       run: |
-        # Get the current commit SHA (works for any ref)
+        # Construct the service specific commit SHA
+        # Convert GitHub variables to bash variables for clarity
         SHA_TYPE="${{ inputs.sha-type }}"
-        echo "sha-type input = $SHA_TYPE"
-        echo "target-branch = ${{ inputs.target-branch }}"
-        echo "image-prefix = ${{ inputs.image-prefix }}"
+        IMAGE_PREFIX="${{ inputs.image-prefix }}"
+        SERVICE_NAME="${{ inputs.service-name }}"
+        USE_DOCKER_REPO="${{ inputs.docker-repo }}"
+        echo "sha-type     = $SHA_TYPE"
+        echo "image-prefix = $IMAGE_PREFIX"
+        echo "service-name = $SERVICE_NAME"
+        echo "docker-repo  = $USE_DOCKER_REPO"
 
-        if [[ "$SHA_TYPE" == "long" ]]; then
-          GIT_COMMIT="${{ inputs.image-prefix }}$(git rev-parse HEAD)"
+        # Generate SHA
+        if [[ "$SHA_TYPE" == "short" ]]; then
+          SHA="$(git rev-parse --short=7 HEAD)"
         else
-          GIT_COMMIT="${{ inputs.image-prefix }}$(git rev-parse --short=7 HEAD)"
+          SHA="$(git rev-parse HEAD)"
         fi
 
-        echo "IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
-        echo "DOCKER_IMAGE=$GIT_COMMIT" >> $GITHUB_ENV
-        echo "DOCKER_IMAGE_TAG=$GIT_COMMIT" >> $GITHUB_ENV
+        # Build base value (prefix + sha)
+        VALUE="${IMAGE_PREFIX}${SHA}"
+
+        # Optionally wrap as full image
+        if [[ "$USE_DOCKER_REPO" != "false" && -n "$SERVICE_NAME" ]]; then
+          VALUE="ghcr.io/dfe-digital/${SERVICE_NAME}:${VALUE}"
+        fi
+
+        # Export
+        echo "IMAGE_TAG=$VALUE" >> $GITHUB_ENV
+        echo "DOCKER_IMAGE=$VALUE" >> $GITHUB_ENV
+        echo "DOCKER_IMAGE_TAG=$VALUE" >> $GITHUB_ENV
         echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
-        echo "Using commit SHA: $GIT_COMMIT"
+
+        echo "Final value: $VALUE"
 
     - name: Azure login
       uses: azure/login@v3
