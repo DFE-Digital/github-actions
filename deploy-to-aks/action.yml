@@ -87,7 +87,7 @@ runs:
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
 
-    - uses: google-github-actions/auth@v2
+    - uses: google-github-actions/auth@v3
       if: ${{ inputs.gcp-wip != '' }}
       with:
         project_id: ${{ inputs.gcp-project-id }}
