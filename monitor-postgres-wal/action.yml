@@ -47,7 +47,7 @@ runs:
         echo "NAMESPACE=$(jq -r '.namespace' ${tf_vars_file})" >> $GITHUB_ENV
         echo "WAL_THRESHOLD=$(jq -r '.wal_threshold' ${tf_vars_file})" >> $GITHUB_ENV
 
-    - uses: azure/login@v2
+    - uses: azure/login@v3
       with:
         creds: ${{ inputs.azure-credentials }}
         client-id: ${{ inputs.azure-client-id }}
