@@ -67,7 +67,7 @@ runs:
         terraform_version: ${{ env.TERRAFORM_VERSION }}
         terraform_wrapper: false
 
-    - uses: azure/login@v2
+    - uses: azure/login@v3
       with:
         creds: ${{ inputs.azure-credentials }}
         client-id: ${{ inputs.azure-client-id }}
