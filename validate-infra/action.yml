@@ -97,7 +97,7 @@ runs:
         echo "Using commit SHA: $GIT_COMMIT"
 
     - name: Azure login
-      uses: azure/login@v2
+      uses: azure/login@v3
       with:
         client-id: ${{ inputs.azure-client-id }}
         tenant-id: ${{ inputs.azure-tenant-id }}
