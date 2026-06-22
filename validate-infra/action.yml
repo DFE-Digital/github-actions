@@ -124,6 +124,7 @@ runs:
         echo "IMAGE_TAG=$VALUE" >> $GITHUB_ENV
         echo "DOCKER_IMAGE=$VALUE" >> $GITHUB_ENV
         echo "DOCKER_IMAGE_TAG=$VALUE" >> $GITHUB_ENV
+        echo "WORKER_DOCKER_IMAGE_TAG=$VALUE" >> $GITHUB_ENV
         echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
 
         echo "Final value: $VALUE"
