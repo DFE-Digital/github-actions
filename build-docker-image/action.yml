@@ -40,6 +40,19 @@ inputs:
   service:
     description: Name of service, used in teams notification messages
     required: false
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
+
 
 outputs:
   tag:
@@ -57,6 +70,23 @@ runs:
       run: |
         $DockerRepository = "${{ inputs.docker-repository }}".ToLower()
         "DOCKER_REPOSITORY=$DockerRepository" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+    - uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Check Azure login inputs
+      shell: bash
+      run: |
+        [[ -n "${{ inputs.azure-client-id }}" ]] && echo "client-id present" || echo "client-id MISSING"
+        [[ -n "${{ inputs.azure-tenant-id }}" ]] && echo "tenant-id present" || echo "tenant-id MISSING"
+        [[ -n "${{ inputs.azure-subscription-id }}" ]] && echo "subscription-id present" || echo "subscription-id MISSING"
+
+    - name: Log in to Docker Hub cache ACR
+      shell: bash
+      run: az acr login --name s189d01tsccluster4dockerhub
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v4
