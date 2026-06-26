@@ -2,6 +2,14 @@ name: Validate Infrastructure
 description: Run terraform plan with detailed exit code to validate infrastructure state
 
 inputs:
+  aws-access-key-id:
+    description: AWS access key ID when using OIDC
+    required: false
+    default: ""
+  aws-secret-access-key:
+    description: AWS secret access key when using OIDC
+    required: false
+    default: ""
   azure-client-id:
     description: Azure service principal or managed identity client ID when using OIDC
     required: false
@@ -70,6 +78,10 @@ inputs:
     options:
       - true
       - false
+  confirm-production:
+    description: Confirm production execution if required
+    required: false
+    default: ""
 
 outputs:
   cluster_drift_detected:
@@ -128,6 +140,16 @@ runs:
         echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
 
         echo "Final value: $VALUE"
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6.2.0
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: eu-west-2
+        role-to-assume: Deployments
+        role-duration-seconds: 3600
+        role-skip-session-tagging: true
 
     - name: Azure login
       uses: azure/login@v3
@@ -178,6 +200,7 @@ runs:
         set +e  # Don't exit on non-zero return codes
 
         echo "::group::Running terraform plan for AKS cluster (${{ inputs.environment }})"
+        CONFIRM_PRODUCTION=${{ inputs.confirm-production }} \
         DETAILED_EXITCODE=-detailed-exitcode make ci ${{ inputs.environment }} terraform-plan
         EXIT_CODE=$?
         echo "::endgroup::"
