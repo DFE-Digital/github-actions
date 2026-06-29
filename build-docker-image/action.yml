@@ -40,6 +40,9 @@ inputs:
   service:
     description: Name of service, used in teams notification messages
     required: false
+  secret-files:
+    description: Secret files to pass into docker buildx (id=path)
+    required: false
 
 outputs:
   tag:
@@ -167,6 +170,7 @@ runs:
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
+        secret-files: ${{ inputs.secret-files }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
       env:
@@ -185,6 +189,7 @@ runs:
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
+        secret-files: ${{ inputs.secret-files }}
       env:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
@@ -209,6 +214,7 @@ runs:
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
+        secret-files: ${{ inputs.secret-files }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
       env:
@@ -228,6 +234,7 @@ runs:
         file: ${{ inputs.dockerfile-path }}
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
+        secret-files: ${{ inputs.secret-files }}
       env:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
