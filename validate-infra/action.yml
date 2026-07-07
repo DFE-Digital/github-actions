@@ -70,6 +70,10 @@ inputs:
     options:
       - true
       - false
+  worker-image-suffix:
+    description: Suffix appended to service name for worker image if the worker image is different from the service image
+    required: false
+    default: ""
 
 outputs:
   cluster_drift_detected:
@@ -100,10 +104,12 @@ runs:
         IMAGE_PREFIX="${{ inputs.image-prefix }}"
         SERVICE_NAME="${{ inputs.service-name }}"
         USE_DOCKER_REPO="${{ inputs.docker-repo }}"
-        echo "sha-type     = $SHA_TYPE"
-        echo "image-prefix = $IMAGE_PREFIX"
-        echo "service-name = $SERVICE_NAME"
-        echo "docker-repo  = $USE_DOCKER_REPO"
+        WORKER_IMAGE_SUFFIX="${{ inputs.worker-image-suffix }}"
+        echo "sha-type            = $SHA_TYPE"
+        echo "image-prefix        = $IMAGE_PREFIX"
+        echo "service-name        = $SERVICE_NAME"
+        echo "docker-repo         = $USE_DOCKER_REPO"
+        echo "worker-image-suffix = $WORKER_IMAGE_SUFFIX"
 
         # Generate SHA
         if [[ "$SHA_TYPE" == "short" ]]; then
@@ -121,13 +127,15 @@ runs:
         fi
 
         # Export
+        echo "Final SHA value: $VALUE"
         echo "IMAGE_TAG=$VALUE" >> $GITHUB_ENV
         echo "DOCKER_IMAGE=$VALUE" >> $GITHUB_ENV
         echo "DOCKER_IMAGE_TAG=$VALUE" >> $GITHUB_ENV
-        echo "WORKER_DOCKER_IMAGE_TAG=$VALUE" >> $GITHUB_ENV
         echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
-
-        echo "Final value: $VALUE"
+        # Optionally add worker image suffix
+        if [[ "$WORKER_IMAGE_SUFFIX" != "" ]]; then
+          echo "TF_VAR_worker_docker_image=ghcr.io/dfe-digital/${SERVICE_NAME}${WORKER_IMAGE_SUFFIX}:${VALUE}" >> $GITHUB_ENV
+        fi
 
     - name: Azure login
       uses: azure/login@v3
