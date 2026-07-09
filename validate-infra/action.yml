@@ -145,6 +145,7 @@ runs:
         echo "DOCKER_IMAGE_TAG=$VALUE" >> $GITHUB_ENV
         echo "GITHUB_EVENT_NAME=${{ github.event_name }}" >> $GITHUB_ENV
         echo "tag=$VALUE" >> $GITHUB_ENV
+        echo "TF_VAR_docker_image=$VALUE" >> $GITHUB_ENV
         # Optionally add worker image suffix
         if [[ "$WORKER_IMAGE_SUFFIX" != "" ]]; then
           echo "TF_VAR_worker_docker_image=ghcr.io/dfe-digital/${SERVICE_NAME}${WORKER_IMAGE_SUFFIX}:${VALUE}" >> $GITHUB_ENV
