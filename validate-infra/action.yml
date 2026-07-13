@@ -127,12 +127,33 @@ runs:
         echo "docker-repo         = $USE_DOCKER_REPO"
         echo "worker-image-suffix = $WORKER_IMAGE_SUFFIX"
 
+        # Determine repository default branch (main/master/etc)
+        DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
+        CURRENT_BRANCH="${{ inputs.target-branch }}"
+
+        echo "Default branch: $DEFAULT_BRANCH"
+        echo "Target branch:  $CURRENT_BRANCH"
+        echo "Default branch from GitHub: ${{ github.event.repository.default_branch }}"
+        echo "GITHUB_REF_NAME: '$GITHUB_REF_NAME'"
+
+        # If validating a feature branch, use the SHA from the default branch
+        if [[ "$CURRENT_BRANCH" == "$DEFAULT_BRANCH" ]]; then
+          REF="HEAD"
+          echo "Using current branch SHA for image tag generation"
+        else
+          echo "Feature branch detected - using SHA from default branch ($DEFAULT_BRANCH)"
+          git fetch origin "$DEFAULT_BRANCH" --depth=1
+          REF="origin/$DEFAULT_BRANCH"
+        fi
+
         # Generate SHA
         if [[ "$SHA_TYPE" == "short" ]]; then
-          SHA="$(git rev-parse --short=7 HEAD)"
+          SHA="$(git rev-parse --short=7 "$REF")"
         else
-          SHA="$(git rev-parse HEAD)"
+          SHA="$(git rev-parse "$REF")"
         fi
+
+        echo "Using SHA: $SHA"
 
         # Build base value (prefix + sha)
         VALUE="${IMAGE_PREFIX}${SHA}"
