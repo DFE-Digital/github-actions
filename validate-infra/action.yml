@@ -154,7 +154,7 @@ runs:
         if [[ "$WORKER_IMAGE_SUFFIX" != "" ]]; then
           echo "TF_VAR_worker_docker_image=ghcr.io/dfe-digital/${SERVICE_NAME}${WORKER_IMAGE_SUFFIX}:${VALUE}" >> $GITHUB_ENV
         fi
-    
+
     - name: Configure AWS credentials
       if: ${{ inputs.aws-access-key-id != '' && inputs.aws-secret-access-key != '' }}
       uses: aws-actions/configure-aws-credentials@v6.2.0
@@ -180,6 +180,55 @@ runs:
       with:
         project_id: ${{ inputs.gcp-project-id }}
         workload_identity_provider: ${{ inputs.gcp-wip }}
+
+
+
+
+
+
+
+
+    - name: Set environment variables for non-review environments
+      if: startsWith(inputs.environment, 'review') != true
+      shell: bash
+      run: |
+        PARAMETER_STORE_ENVIRONMENT=${{ inputs.environment }}
+        DEPLOY_ENV=${{ inputs.environment }}
+        echo "PARAMETER_STORE_ENVIRONMENT=${PARAMETER_STORE_ENVIRONMENT}" >> $GITHUB_ENV
+        echo "DEPLOY_ENV=${DEPLOY_ENV}" >> $GITHUB_ENV
+        CONFIRM_PRODUCTION=YES
+        echo "CONFIRM_PRODUCTION=${CONFIRM_PRODUCTION}" >> $GITHUB_ENV
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1.302.0
+
+    - name: Download fetch_config.rb
+      shell: bash
+      run: |
+        echo "::group:: Download fetch_config.rb script"
+        curl -s https://raw.githubusercontent.com/DFE-Digital/bat-platform-building-blocks/master/scripts/fetch_config/fetch_config.rb -o bin/fetch_config.rb
+        chmod +x bin/fetch_config.rb
+        echo "::endgroup::"
+
+    # Validate secrets stored in parameter store to prevent terraform from exposing them in case of an issue
+    - name: Validate secrets
+      shell: bash
+      run: |
+        gem install aws-sdk-ssm --no-document
+        bin/fetch_config.rb -s aws-ssm-parameter-path:/teaching-vacancies/${{ env.PARAMETER_STORE_ENVIRONMENT }}/app -d quiet \
+          && echo Data in "/teaching-vacancies/${{ env.PARAMETER_STORE_ENVIRONMENT }}" looks valid
+
+
+
+
+
+
+
+
+
+
+
+
 
     - name: Set Environment variables
       id: set_env_var
