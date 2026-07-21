@@ -33,7 +33,7 @@ runs:
     - name: Set up kubelogin
       uses: azure/use-kubelogin@v1.3
       with:
-        kubelogin-version: 'v0.2.17'
+        kubelogin-version: 'v0.2.19'
 
     - name: Set common kubelogin SPN variables
       shell: bash

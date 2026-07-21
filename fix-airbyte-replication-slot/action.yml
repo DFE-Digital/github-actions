@@ -1,0 +1,126 @@
+name: Fix Airbyte Replication Slot
+description: Checks if the Airbyte replication slot exists on the service database and recreates it if missing
+
+inputs:
+  azure-client-id:
+    description: Azure client ID for OIDC authentication
+    required: true
+  azure-tenant-id:
+    description: Azure tenant ID for OIDC authentication
+    required: true
+  azure-subscription-id:
+    description: Azure subscription ID for OIDC authentication
+    required: true
+  app-name:
+    description: Name of the application pod to tunnel through e.g. register-production
+    required: true
+  namespace:
+    description: Kubernetes namespace where the application is deployed
+    required: true
+  cluster:
+    description: Cluster name e.g. test or production
+    required: true
+  dry-run:
+    description: If true, skip slot creation and only run SELECT queries (safe for testing)
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Install kubectl
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Set up cluster environment variables
+      shell: bash
+      run: |
+        CLUSTER_INPUT="${{ inputs.cluster }}"
+        case $CLUSTER_INPUT in
+          test)
+            echo "cluster_rg=s189t01-tsc-ts-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-test-aks" >> $GITHUB_ENV
+            ;;
+          production)
+            echo "cluster_rg=s189p01-tsc-pd-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189p01-tsc-production-aks" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "unknown cluster"
+            ;;
+        esac
+
+    - name: Get cluster credentials
+      shell: bash
+      run: |
+        az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
+        kubelogin convert-kubeconfig -l $AAD_LOGIN_METHOD
+
+    - name: Install postgres client
+      uses: DFE-Digital/github-actions/install-postgres-client@master
+
+    - name: Install konduit
+      shell: bash
+      run: |
+        [ ! -f bin/konduit.sh ] && \
+          curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/main/scripts/konduit.sh \
+          -o bin/konduit.sh && chmod +x bin/konduit.sh || true
+
+    - name: Check replication slot status
+      shell: bash
+      run: |
+        bin/konduit.sh -n ${{ inputs.namespace }} -t 60 \
+          ${{ inputs.app-name }} -- \
+          psql -c "SELECT slot_name, active, confirmed_flush_lsn, \
+                   pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_wal \
+                   FROM pg_replication_slots WHERE slot_name = 'airbyte_slot';"
+
+    - name: Recreate replication slot if it does not exist
+      shell: bash
+      run: |
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "[dry-run] Skipping slot creation. Would have run: pg_create_logical_replication_slot('airbyte_slot', 'pgoutput')"
+          echo "[dry-run] Checking slot existence only:"
+          bin/konduit.sh -n ${{ inputs.namespace }} -t 60 \
+            ${{ inputs.app-name }} -- \
+            psql -c "SELECT CASE
+                       WHEN NOT EXISTS (
+                         SELECT 1 FROM pg_replication_slots WHERE slot_name = 'airbyte_slot'
+                       )
+                       THEN 'Slot does not exist — would recreate in non-dry-run mode'
+                       ELSE 'Slot already exists, no action needed'
+                     END AS dry_run_result;"
+        else
+          cat > /tmp/fix_slot.sql << 'EOF'
+        \set slot_exists false
+        SELECT EXISTS(SELECT 1 FROM pg_replication_slots WHERE slot_name = 'airbyte_slot') AS slot_exists \gset
+        \if :slot_exists
+          \echo 'Replication slot "airbyte_slot" already exists.'
+        \else
+          ALTER ROLE CURRENT_USER WITH REPLICATION;
+          SELECT * FROM pg_create_logical_replication_slot('airbyte_slot', 'pgoutput');
+          ALTER ROLE CURRENT_USER WITH NOREPLICATION;
+        \endif
+        EOF
+          bin/konduit.sh -n ${{ inputs.namespace }} -t 60 -i /tmp/fix_slot.sql \
+            ${{ inputs.app-name }} -- psql
+        fi
+
+    - name: Verify replication slot after fix
+      shell: bash
+      run: |
+        bin/konduit.sh -n ${{ inputs.namespace }} -t 60 \
+          ${{ inputs.app-name }} -- \
+          psql -c "SELECT slot_name, active, confirmed_flush_lsn \
+                   FROM pg_replication_slots WHERE slot_name = 'airbyte_slot';"

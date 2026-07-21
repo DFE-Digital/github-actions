@@ -1,0 +1,128 @@
+name: Fix Airbyte LSN Error
+description: Resets the saved LSN state in the Airbyte internal database for a connection, resolving "Saved offset is before replication slot's confirmed lsn" errors
+
+inputs:
+  azure-client-id:
+    description: Azure client ID for OIDC authentication
+    required: true
+  azure-tenant-id:
+    description: Azure tenant ID for OIDC authentication
+    required: true
+  azure-subscription-id:
+    description: Azure subscription ID for OIDC authentication
+    required: true
+  namespace:
+    description: Kubernetes namespace where Airbyte is deployed
+    required: true
+  cluster:
+    description: Cluster name e.g. test or production
+    required: true
+  connection-id:
+    description: Airbyte connection UUID to reset state for
+    required: false
+    default: ''
+  dry-run:
+    description: If true, inspect state only — do not delete
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Install kubectl
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Set up cluster environment variables
+      shell: bash
+      run: |
+        CLUSTER_INPUT="${{ inputs.cluster }}"
+        case $CLUSTER_INPUT in
+          test)
+            echo "cluster_rg=s189t01-tsc-ts-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-test-aks" >> $GITHUB_ENV
+            ;;
+          production)
+            echo "cluster_rg=s189p01-tsc-pd-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189p01-tsc-production-aks" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "unknown cluster"
+            ;;
+        esac
+
+    - name: Get cluster credentials
+      shell: bash
+      run: |
+        az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
+        kubelogin convert-kubeconfig -l $AAD_LOGIN_METHOD
+
+    - name: Install postgres client
+      uses: DFE-Digital/github-actions/install-postgres-client@master
+
+    - name: Install konduit
+      shell: bash
+      run: |
+        [ ! -f bin/konduit.sh ] && \
+          curl -s https://raw.githubusercontent.com/DFE-Digital/teacher-services-cloud/main/scripts/konduit.sh \
+          -o bin/konduit.sh && chmod +x bin/konduit.sh || true
+
+    - name: Get Airbyte internal DB URL
+      shell: bash
+      run: |
+        DATABASE_URL=$(kubectl -n ${{ inputs.namespace }} get secret/airbyte-db-secrets \
+          --template={{.data.DATABASE_URL}} | base64 -d)
+        echo "::add-mask::$DATABASE_URL"
+        echo "DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
+
+    - name: Inspect current LSN state
+      shell: bash
+      run: |
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "[dry-run] Skipping inspect. No connection-id provided for testing."
+        else
+          bin/konduit.sh -n ${{ inputs.namespace }} -x -u $DATABASE_URL \
+            airbyte-${{ inputs.namespace }}-worker -- \
+            psql -c "SELECT * FROM public.state \
+                     WHERE connection_id = '${{ inputs.connection-id }}' \
+                     ORDER BY created_at DESC;"
+        fi
+
+    - name: Reset saved LSN state
+      shell: bash
+      run: |
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "[dry-run] Skipping DELETE. Would have run:"
+          echo "[dry-run] DELETE FROM public.state WHERE connection_id = '${{ inputs.connection-id }}';"
+        else
+          bin/konduit.sh -n ${{ inputs.namespace }} -x -u $DATABASE_URL \
+            airbyte-${{ inputs.namespace }}-worker -- \
+            psql -c "BEGIN;
+                     DELETE FROM public.state \
+                     WHERE connection_id = '${{ inputs.connection-id }}';
+                     COMMIT;"
+        fi
+
+    - name: Verify state after reset
+      shell: bash
+      run: |
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          echo "[dry-run] Skipping verify. No connection-id provided for testing."
+        else
+          bin/konduit.sh -n ${{ inputs.namespace }} -x -u $DATABASE_URL \
+            airbyte-${{ inputs.namespace }}-worker -- \
+            psql -c "SELECT * FROM public.state \
+                     WHERE connection_id = '${{ inputs.connection-id }}' \
+                     ORDER BY created_at DESC;"
+        fi
