@@ -69,13 +69,13 @@ runs:
   steps:
     - name: Setup .NET (global.json)
       if: inputs.use-global-json == 'true'
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         global-json-file: global.json
 
     - name: Setup .NET (fallback to dotnet-version)
       if: inputs.use-global-json != 'true'
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 
