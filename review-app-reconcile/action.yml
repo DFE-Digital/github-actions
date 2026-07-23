@@ -80,9 +80,10 @@ runs:
     - name: Install kubectl
       uses: DFE-Digital/github-actions/set-kubectl@master
 
+    # The PR_NUMBER is set to a dummy value here because we are only using this step to get the AKS credentials
     - name: Set AKS credentials
       shell: bash
-      run: make ci review get-cluster-credentials PULL_REQUEST_NUMBER=1234
+      run: make ci review get-cluster-credentials PULL_REQUEST_NUMBER=z PR_NUMBER=z APP_NAME=z
 
     - name: Find stale review apps
       id: find-stale
