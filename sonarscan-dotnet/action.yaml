@@ -34,7 +34,7 @@ inputs:
   java-version:
     description: "Java version used by SonarScanner."
     required: false
-    default: "17"
+    default: "21"
 
   sonarcloud-project-key:
     description: "SonarCloud project key."
