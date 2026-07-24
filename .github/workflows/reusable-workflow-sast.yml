@@ -166,7 +166,7 @@ jobs:
           persist-credentials: false
         
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           queries: ${{ inputs.queries }}
           config-file: ${{ inputs.config_file }}
@@ -175,7 +175,7 @@ jobs:
         if: ${{ inputs.config_file != '' }}
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           queries: ${{ inputs.queries }}
           languages: ${{ inputs.language }}
@@ -208,7 +208,7 @@ jobs:
         if: ${{ inputs.language == 'csharp' && inputs.dotnet_build_params != '' }}
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           ref: ${{ inputs.ref }}
           sha: ${{ inputs.sha }}
