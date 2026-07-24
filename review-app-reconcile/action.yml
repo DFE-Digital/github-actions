@@ -36,6 +36,10 @@ inputs:
     description: Path to the terraform vars files
     required: false
     default: "terraform/application"
+  tf-vars-filename:
+    description: location of review tfvars in global config
+    required: true
+    default: "review.tfvars.json"
   global-config-path:
     description: Path to the global config
     required: true
@@ -59,7 +63,7 @@ runs:
       run: |
         # Load environment-specific configuration
         source ${{ inputs.global-config-path }}/review.sh
-        tf_vars_file=${{ inputs.tf-vars-path }}/review.tfvars.json
+        tf_vars_file=${{ inputs.tf-vars-path }}/${{ inputs.tf-vars-filename }}
         # Set Azure environment variables
         echo "NAMESPACE=$(jq -r '.namespace' ${tf_vars_file})" >> $GITHUB_ENV
         echo "using tf_vars_file $tf_vars_file"
