@@ -135,6 +135,12 @@ runs:
           COVERAGE_ARG=""
         fi
 
+        if [ -n "${{ inputs.coverage-exclusions }}" ]; then
+          COVERAGE_EXCLUSIONS_ARG="/d:sonar.coverage.exclusions=${{ inputs.coverage-exclusions }}"
+        else
+          COVERAGE_EXCLUSIONS_ARG=""
+        fi
+
         dotnet tool run dotnet-sonarscanner begin \
           /o:"${{ inputs.sonarcloud-organisation }}" \
           /k:"${{ inputs.sonarcloud-project-key }}" \
@@ -142,7 +148,7 @@ runs:
           /d:sonar.token="$TOKEN" \
           ${ANALYSIS_EXCLUSIONS_ARG} \
           ${COVERAGE_ARG} \
-          /d:sonar.coverage.exclusions="${{ inputs.coverage-exclusions }}" \
+          ${COVERAGE_EXCLUSIONS_ARG} \
           /d:sonar.scanner.skipJreProvisioning=true \
           ${{ inputs.sonarscan-args }}
 
