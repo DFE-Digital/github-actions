@@ -28,6 +28,8 @@ Welcome to the central repository for GitHub Actions at the DfE!
 * [restore-postgres-backup](restore-postgres-backup)
 * [review-app-reconcile](review-app-reconcile)
 * [sast-reusable-workflow](sast-reusable-workflow)
+* [send-adaptive-card-to-teams](send-adaptive-card-to-teams)
+* [send-project-issues-to-teams](send-project-issues-to-teams)
 * [send-to-teams-channel](send-to-teams-channel)
 * [set-arm-environment-variables](set-arm-environment-variables)
 * [set-kubectl](set-kubectl)

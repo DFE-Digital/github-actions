@@ -1,0 +1,45 @@
+name: Send Adaptive Card to Teams
+description: Post an Adaptive Card payload to a Microsoft Teams webhook URL.
+
+inputs:
+  teams-webhook-url:
+    description: Teams webhook URL (Power Automate/Incoming Webhook).
+    required: true
+  body-json:
+    description: Adaptive Card body JSON content.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send Adaptive Card payload
+      shell: bash
+      env:
+        TEAMS_WEBHOOK_URL: ${{ inputs.teams-webhook-url }}
+        BODY_JSON: ${{ inputs.body-json }}
+      run: |
+        set -euo pipefail
+
+        payload=$(jq -cn --argjson body "$BODY_JSON" '{
+          type: "message",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                type: "AdaptiveCard",
+                version: "1.5",
+                msteams: {
+                  width: "Full"
+                },
+                body: $body
+              }
+            }
+          ]
+        }')
+
+        curl --fail --silent --show-error \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -d "$payload" \
+          "$TEAMS_WEBHOOK_URL"
