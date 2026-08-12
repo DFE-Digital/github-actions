@@ -370,7 +370,7 @@ runs:
 
     - name: Send Adaptive Card to Teams
       if: ${{ steps.build_card.outputs.issue_count != '0' || contains(fromJSON('["true","1","yes"]'), inputs.send-when-empty) }}
-      uses: ./.github/actions/send-adaptive-card-to-teams
+      uses: ./../send-adaptive-card-to-teams
       with:
         teams-webhook-url: ${{ inputs.teams-webhook-url }}
         body-json: ${{ steps.build_card.outputs.body_json }}
