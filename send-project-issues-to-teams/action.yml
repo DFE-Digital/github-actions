@@ -1,0 +1,376 @@
+name: Send project issues to Teams
+description: Build a project issue summary Adaptive Card body and send it to Teams.
+
+inputs:
+  github-token:
+    description: GitHub token with permission to read project and issues data.
+    required: true
+  teams-webhook-url:
+    description: Teams webhook URL (Power Automate/Incoming Webhook).
+    required: true
+  project-owner:
+    description: Organization/user that owns the ProjectV2.
+    required: false
+    default: DFE-Digital
+  project-number:
+    description: ProjectV2 number.
+    required: true
+  label-filter:
+    description: Only include issues with this label.
+    required: false
+    default: Service Request
+  status-filter:
+    description: Optional status filter (matches project Status field).
+    required: false
+    default: ""
+  sprint-filter:
+    description: Optional sprint filter (matches project Sprint field).
+    required: false
+    default: ""
+  max-items:
+    description: Maximum number of issues to include.
+    required: false
+    default: "25"
+  recently-closed-days:
+    description: Also include issues closed within this many days (0 to disable).
+    required: false
+    default: "3"
+  clickable-issue-links:
+    description: Render issue titles as clickable links in the card.
+    required: false
+    default: "false"
+  send-when-empty:
+    description: Send the report even when there are zero matching issues (true/false).
+    required: false
+    default: "false"
+
+outputs:
+  issue-count:
+    description: Number of matching issues found.
+    value: ${{ steps.build_card.outputs.issue_count }}
+  body-json:
+    description: Adaptive Card body JSON generated for Teams.
+    value: ${{ steps.build_card.outputs.body_json }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build Adaptive Card body from project data
+      id: build_card
+      uses: actions/github-script@v9
+      env:
+        PROJECT_OWNER: ${{ inputs.project-owner }}
+        PROJECT_NUMBER: ${{ inputs.project-number }}
+        LABEL_FILTER: ${{ inputs.label-filter }}
+        STATUS_FILTER: ${{ inputs.status-filter }}
+        SPRINT_FILTER: ${{ inputs.sprint-filter }}
+        MAX_ITEMS: ${{ inputs.max-items }}
+        RECENTLY_CLOSED_DAYS: ${{ inputs.recently-closed-days }}
+        CLICKABLE_ISSUE_LINKS: ${{ inputs.clickable-issue-links }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const owner = (process.env.PROJECT_OWNER || context.repo.owner).trim();
+          const repo = context.repo.repo;
+          const projectNumber = Number(process.env.PROJECT_NUMBER);
+          const labelFilter = (process.env.LABEL_FILTER || '').trim();
+          const statusFilter = (process.env.STATUS_FILTER || '').trim();
+          const sprintFilter = (process.env.SPRINT_FILTER || '').trim();
+          const maxItems = Math.max(1, Number(process.env.MAX_ITEMS || '25'));
+          const recentlyClosedDays = Math.max(0, Number(process.env.RECENTLY_CLOSED_DAYS || '3'));
+          const clickableIssueLinks = ['true', '1', 'yes'].includes(String(process.env.CLICKABLE_ISSUE_LINKS || '').toLowerCase());
+
+          if (!Number.isInteger(projectNumber) || projectNumber <= 0) {
+            core.setFailed('project-number must be a positive integer.');
+            return;
+          }
+
+          const projectMetaGql = `
+            query($owner: String!, $projectNumber: Int!) {
+              organization(login: $owner) {
+                projectV2(number: $projectNumber) {
+                  title
+                }
+              }
+            }
+          `;
+
+          const projectMeta = await github.graphql(projectMetaGql, { owner, projectNumber });
+          const resolvedProjectTitle = projectMeta?.organization?.projectV2?.title;
+          if (!resolvedProjectTitle) {
+            core.setFailed(`ProjectV2 #${projectNumber} could not be read for organization ${owner}.`);
+            return;
+          }
+
+          const baseSearchQueryParts = [
+            'is:issue',
+            `repo:${context.repo.owner}/${repo}`,
+            `project:"${owner}/${projectNumber}"`,
+            labelFilter ? `label:"${labelFilter.replace(/"/g, '\\"')}"` : '',
+          ].filter(Boolean);
+
+          const openSearchQuery = [...baseSearchQueryParts, 'is:open'].join(' ');
+          const closedAfterDate = recentlyClosedDays > 0
+            ? new Date(Date.now() - recentlyClosedDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+            : null;
+          const closedSearchQuery = closedAfterDate
+            ? [...baseSearchQueryParts, 'is:closed', `closed:>=${closedAfterDate}`].join(' ')
+            : null;
+
+          core.info(`DEBUG open search query: ${openSearchQuery}`);
+          if (closedSearchQuery) core.info(`DEBUG closed search query: ${closedSearchQuery}`);
+
+          const gql = `
+            query($searchQuery: String!, $cursor: String) {
+              search(query: $searchQuery, type: ISSUE, first: 100, after: $cursor) {
+                issueCount
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                  ... on Issue {
+                    number
+                    title
+                    state
+                    url
+                    repository {
+                      nameWithOwner
+                    }
+                    milestone {
+                      title
+                    }
+                    labels(first: 25) {
+                      nodes {
+                        name
+                      }
+                    }
+                    projectItems(first: 10) {
+                      nodes {
+                        project {
+                          number
+                          title
+                        }
+                        fieldValues(first: 50) {
+                          nodes {
+                            __typename
+                            ... on ProjectV2ItemFieldSingleSelectValue {
+                              name
+                              field {
+                                ... on ProjectV2SingleSelectField {
+                                  name
+                                }
+                              }
+                            }
+                            ... on ProjectV2ItemFieldTextValue {
+                              text
+                              field {
+                                ... on ProjectV2FieldCommon {
+                                  name
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          `;
+
+          const fetchAllFromSearch = async (searchQuery, label) => {
+            const results = [];
+            let cursor = null;
+            let issueCount = 0;
+            while (true) {
+              const data = await github.graphql(gql, { searchQuery, cursor });
+              const search = data?.search;
+              if (!search) throw new Error(`GraphQL search query returned no data (${label}).`);
+              issueCount = Math.max(issueCount, Number(search.issueCount || 0));
+              for (const node of search.nodes || []) {
+                const projectItem = (node.projectItems?.nodes || []).find(
+                  (pi) => pi.project?.number === projectNumber
+                );
+                results.push({ issue: node, projectItem: projectItem || null });
+              }
+              if (!search.pageInfo?.hasNextPage) break;
+              cursor = search.pageInfo.endCursor;
+            }
+            core.info(`DEBUG ${label} issueCount: ${issueCount}, nodes: ${results.length}`);
+            return results;
+          };
+
+          const openIssues = await fetchAllFromSearch(openSearchQuery, 'open');
+          const closedIssues = closedSearchQuery
+            ? await fetchAllFromSearch(closedSearchQuery, `closed (last ${recentlyClosedDays}d)`)
+            : [];
+
+          const seen = new Set();
+          const allIssues = [];
+          for (const item of [...openIssues, ...closedIssues]) {
+            if (!seen.has(item.issue.number)) {
+              seen.add(item.issue.number);
+              allIssues.push(item);
+            }
+          }
+          core.info(`DEBUG total unique issues after merge: ${allIssues.length}`);
+
+          const normalizeField = (value) => {
+            if (value == null) return '';
+            if (typeof value === 'string' || typeof value === 'number') return String(value);
+            if (typeof value === 'object') return value.name || value.title || value.text || '';
+            return '';
+          };
+
+          const items = [];
+          const expectedRepo = `${context.repo.owner}/${repo}`.toLowerCase();
+
+          for (const { issue, projectItem } of allIssues) {
+            const issueRepo = (issue.repository?.nameWithOwner || '').toLowerCase();
+            if (issueRepo !== expectedRepo) continue;
+            if (!projectItem) continue;
+
+            const labels = (issue.labels?.nodes || []).map((l) => l.name);
+            const hasLabel = !labelFilter || labels.some((label) => label.toLowerCase() === labelFilter.toLowerCase());
+            if (!hasLabel) continue;
+
+            const fields = {};
+            for (const fv of projectItem?.fieldValues?.nodes || []) {
+              if (fv.__typename === 'ProjectV2ItemFieldSingleSelectValue') {
+                const fieldName = fv.field?.name;
+                if (fieldName) fields[fieldName] = fv.name || '';
+              }
+              if (fv.__typename === 'ProjectV2ItemFieldTextValue') {
+                const fieldName = fv.field?.name;
+                if (fieldName) fields[fieldName] = fv.text || '';
+              }
+            }
+
+            const status = normalizeField(fields.Status || fields.status);
+            const sprint = normalizeField(fields.Sprint || fields.sprint);
+            const size = normalizeField(fields.Size || fields.size);
+
+            const matchesStatus = !statusFilter || status.toLowerCase() === statusFilter.toLowerCase();
+            const matchesSprint = !sprintFilter || sprint.toLowerCase() === sprintFilter.toLowerCase();
+
+            if (matchesStatus && matchesSprint) {
+              items.push({
+                number: issue.number,
+                title: issue.title,
+                url: issue.url,
+                milestone: issue.milestone?.title || '-',
+                labels: labels.length > 0 ? labels.join(', ') : '-',
+                sprint: sprint || '-',
+                status: status || '-',
+                size: size || '-',
+              });
+            }
+          }
+
+          items.sort((left, right) => left.number - right.number);
+          const displayed = items.slice(0, maxItems);
+
+          const headerRow = {
+            type: 'ColumnSet',
+            separator: true,
+            spacing: 'Medium',
+            columns: [
+              { type: 'Column', width: 5, items: [{ type: 'TextBlock', text: 'Description', weight: 'Bolder', wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: 'Milestone', weight: 'Bolder', wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: 'Label(s)', weight: 'Bolder', wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: 'Sprint', weight: 'Bolder', wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: 'Status', weight: 'Bolder', wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: 'Size', weight: 'Bolder', wrap: true, size: 'Small' }] }
+            ]
+          };
+
+          const dataRows = displayed.map((item) => ({
+            type: 'ColumnSet',
+            separator: true,
+            spacing: 'Small',
+            columns: [
+              {
+                type: 'Column',
+                width: 5,
+                items: [{
+                  type: 'TextBlock',
+                  text: clickableIssueLinks ? `[#${item.number}](${item.url}) ${item.title}` : `#${item.number} ${item.title}`,
+                  wrap: true,
+                  size: 'Small',
+                  color: 'Accent'
+                }]
+              },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: item.milestone, wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: item.labels, wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: item.sprint, wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: item.status, wrap: true, size: 'Small' }] },
+              { type: 'Column', width: 1, items: [{ type: 'TextBlock', text: item.size, wrap: true, size: 'Small' }] }
+            ]
+          }));
+
+          const summary = [
+            `Total matches: ${items.length}`,
+            `Showing: ${displayed.length}`,
+            labelFilter ? `Label: ${labelFilter}` : null,
+            recentlyClosedDays > 0 ? `Open + closed last ${recentlyClosedDays}d` : 'Open only',
+            clickableIssueLinks ? 'Links on' : 'Links off',
+            statusFilter ? `Status: ${statusFilter}` : null,
+            sprintFilter ? `Sprint: ${sprintFilter}` : null,
+          ].filter(Boolean).join(' | ');
+
+          const cardContent = [
+            {
+              type: 'TextBlock',
+              text: `${repo} project issue summary`,
+              weight: 'Bolder',
+              size: 'Medium',
+              color: 'Accent',
+              wrap: true,
+            },
+            {
+              type: 'TextBlock',
+              text: `${resolvedProjectTitle} (Project #${projectNumber})`,
+              isSubtle: true,
+              spacing: 'None',
+              wrap: true,
+            },
+            {
+              type: 'TextBlock',
+              text: summary,
+              spacing: 'Small',
+              wrap: true,
+              size: 'Small',
+            },
+          ];
+
+          if (displayed.length > 0) {
+            cardContent.push(headerRow, ...dataRows);
+          } else {
+            cardContent.push({
+              type: 'TextBlock',
+              text: 'No issues matched the current filters.',
+              wrap: true,
+              spacing: 'Medium',
+            });
+          }
+
+          const cardBody = [
+            {
+              type: 'Container',
+              style: 'accent',
+              bleed: true,
+              items: cardContent,
+            }
+          ];
+
+          core.setOutput('body_json', JSON.stringify(cardBody));
+          core.setOutput('issue_count', String(items.length));
+
+    - name: Send Adaptive Card to Teams
+      if: ${{ steps.build_card.outputs.issue_count != '0' || contains(fromJSON('["true","1","yes"]'), inputs.send-when-empty) }}
+      uses: ./.github/actions/send-adaptive-card-to-teams
+      with:
+        teams-webhook-url: ${{ inputs.teams-webhook-url }}
+        body-json: ${{ steps.build_card.outputs.body_json }}
