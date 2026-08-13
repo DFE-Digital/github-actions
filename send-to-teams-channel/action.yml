@@ -79,7 +79,7 @@ runs:
     - name: Truncate oversized message
       shell: bash
       run: |
-        MAX_BYTES=81920
+        MAX_BYTES=1000
 
         MESSAGE=$(cat <<'EOF'
         ${{ inputs.message }}
@@ -87,6 +87,9 @@ runs:
         )
 
                 CURRENT_BYTES=$(printf "%s" "$MESSAGE" | wc -c)
+
+                echo "Current bytes: $CURRENT_BYTES"
+                echo "Max bytes: $MAX_BYTES"
 
                 if [ "$CURRENT_BYTES" -gt "$MAX_BYTES" ]; then
 
@@ -99,7 +102,7 @@ runs:
                   SUFFIX_BYTES=$(printf "%s" "$SUFFIX" | wc -c)
                   TRUNCATE_BYTES=$((MAX_BYTES - SUFFIX_BYTES))
 
-                  TRUNCATED_MESSAGE=$(printf "%s" "$MESSAGE" | head -c "$TRUNCATE_BYTES")
+                  TRUNCATED_MESSAGE=$(printf "%s" "$MESSAGE" | head -c "$TRUNCATE_BYTES" || true)
 
                   {
                     echo "TEAMS_MESSAGE<<EOF"
