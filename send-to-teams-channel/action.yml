@@ -8,15 +8,15 @@ inputs:
   title:
     description: Title of message to post in the channel
     required: false
-    default: 'Github workflow notification'
+    default: "Github workflow notification"
   service:
     description: Name of the service
     required: false
-    default: 'ServiceNotSet'
+    default: "ServiceNotSet"
   message:
     description: Message to post in the channel
     required: false
-    default: 'MessageNotSet'
+    default: "MessageNotSet"
   status:
     description: Message status
     default: attention
@@ -28,11 +28,11 @@ inputs:
   minimal:
     description: Display full or minimal message
     required: false
-    default: 'false'
+    default: "false"
   ghrepo:
     description: is this running from a github repository?
     required: false
-    default: 'true'
+    default: "true"
 
 runs:
   using: composite
@@ -76,6 +76,47 @@ runs:
       run: |
         echo "SHORT_TAG=$(echo ${{ env.IMAGE_TAG }} | cut -c -7)" >> $GITHUB_ENV
 
+    - name: Truncate oversized message
+      shell: bash
+      run: |
+        MAX_BYTES=81920
+
+        MESSAGE=$(cat <<'EOF'
+        ${{ inputs.message }}
+        EOF
+        )
+
+                CURRENT_BYTES=$(printf "%s" "$MESSAGE" | wc -c)
+
+                if [ "$CURRENT_BYTES" -gt "$MAX_BYTES" ]; then
+
+                  SUFFIX="
+
+        Message truncated because it exceeded the Teams message size limit.
+        Please view the GitHub Actions workflow run for the complete output:
+        ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+                  SUFFIX_BYTES=$(printf "%s" "$SUFFIX" | wc -c)
+                  TRUNCATE_BYTES=$((MAX_BYTES - SUFFIX_BYTES))
+
+                  TRUNCATED_MESSAGE=$(printf "%s" "$MESSAGE" | head -c "$TRUNCATE_BYTES")
+
+                  {
+                    echo "TEAMS_MESSAGE<<EOF"
+                    printf "%s" "$TRUNCATED_MESSAGE"
+                    printf "%s\n" "$SUFFIX"
+                    echo "EOF"
+                  } >> "$GITHUB_ENV"
+
+                  echo "Teams message truncated from $CURRENT_BYTES bytes to $MAX_BYTES bytes"
+                else
+                  {
+                    echo "TEAMS_MESSAGE<<EOF"
+                    printf "%s\n" "$MESSAGE"
+                    echo "EOF"
+                  } >> "$GITHUB_ENV"
+                fi
+
     - name: Send minimal notification to teams
       shell: bash
       if: inputs.minimal == 'true'
@@ -98,7 +139,7 @@ runs:
                         { "type": "TextBlock", "text": "${{ inputs.title }}", "color": "${{ inputs.status }}", "horizontalAlignment": "left", "size": "large" } ] },
                       { "type": "Column", "items": [
                         { "type": "TextBlock", "text": "${{ inputs.service }}", "color": "${{ inputs.status }}", "size": "large", "horizontalAlignment": "right", "spacing": "large" } ] } ] },
-                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
+                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ env.TEAMS_MESSAGE }}" } ] } ]
                   }
                 ]
               }
@@ -144,7 +185,7 @@ runs:
                           { "type": "Action.OpenUrl", "title": "${{ github.actor }}", "url": "https://github.com/${{ github.actor }}" } ] },
                         { "type": "ActionSet", "actions": [
                           { "type": "Action.OpenUrl", "title": "${{ env.BRANCH_TAG }}", "url": "${{ github.server_url }}/${{ github.repository }}/tree/${{ env.BRANCH_TAG }}" } ] } ] } ] },
-                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
+                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ env.TEAMS_MESSAGE }}" } ] } ]
                   }
                 ]
               }
@@ -186,7 +227,7 @@ runs:
                       { "type": "Column", "items": [
                         { "type": "ActionSet", "actions": [
                           { "type": "Action.OpenUrl", "title": "${{ github.actor }}", "url": "https://github.com/${{ github.actor }}" } ] } ] } ] },
-                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ inputs.message }}" } ] } ]
+                    { "type": "RichTextBlock", "separator": "true", "inlines": [ { "type": "TextRun", "text": "${{ env.TEAMS_MESSAGE }}" } ] } ]
                   }
                 ]
               }
