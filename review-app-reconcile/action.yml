@@ -106,10 +106,10 @@ runs:
           kubectl get deployments -n "$NAMESPACE" -o json |
           jq -r --arg service_name "${{ inputs.service-name }}" '
             .items[]
-            | select(.metadata.name | test("^" + $service_name + "-review-[0-9]+-worker$"))
+            | select(.metadata.name | test("^" + $service_name + "-(review|pr)-[0-9]+-worker$"))
             | .metadata.name
           ' |
-          sed -n "s/^${{ inputs.service-name }}-review-\([0-9]\+\)-worker$/\1/p" |
+          sed -n "s/^${{ inputs.service-name }}-\(review\|pr\)-\([0-9]\+\)-worker$/\2/p"
           sort -n
         )
 
