@@ -1,0 +1,113 @@
+name: Reconcile Konduit Deployments
+description: Delete deployments named konduit-app-nnnnn
+
+inputs:
+  cluster:
+    description: Name of the AKS cluster to reconcile
+    required: true
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
+  age-hours:
+    description: Age threshold in hours
+    required: false
+    default: "48"
+
+outputs:
+  stale_deployments:
+    description: JSON array of stale deployments found
+    value: ${{ steps.find-stale.outputs.stale_deployments }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Azure login
+      uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Install kubectl
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - name: Set kubelogin environment
+      uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Set up cluster environment variables
+      shell: bash
+      run: |
+        case ${{ inputs.cluster }} in
+          s189t01-tsc-platform-test-aks)
+            echo "cluster_rg=s189t01-tsc-pt-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-platform-test-aks" >> $GITHUB_ENV
+            ;;
+          s189t01-tsc-test-aks)
+            echo "cluster_rg=s189t01-tsc-ts-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189t01-tsc-test-aks" >> $GITHUB_ENV
+            ;;
+          s189p01-tsc-production-aks)
+            echo "cluster_rg=s189p01-tsc-pd-rg" >> $GITHUB_ENV
+            echo "cluster_name=s189p01-tsc-production-aks" >> $GITHUB_ENV
+            ;;
+          *)
+            echo "unknown cluster"
+            ;;
+          esac
+
+    - name: Kubernetes setup
+      shell: bash
+      run: |
+        az aks get-credentials --overwrite-existing -g ${{ env.cluster_rg }} -n ${{ env.cluster_name }}
+        kubelogin convert-kubeconfig -l spn
+
+
+    - name: Find stale deployments
+      id: find-stale
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        cutoff=$(date -u -d "${{ inputs.age-hours }} hours ago" +%s)
+
+        stale='[]'
+
+        stale=$(
+          kubectl get deployments -A -o json |
+          jq --argjson cutoff "$cutoff" '
+            [
+              .items[]
+              | select(.metadata.name | test("^konduit-app-[0-9]+$"))
+              | . as $d
+              | (
+                  ($d.metadata.creationTimestamp
+                    | sub("\\.-9]+Z$"; "Z")
+                    | fromdateiso8601)
+                ) as $created
+              | select($created < $cutoff)
+              | {
+                  cluster: "${{ inputs.cluster }}",
+                  namespace: $d.metadata.namespace,
+                  name: $d.metadata.name,
+                  created: $d.metadata.creationTimestamp
+                }
+            ]
+          '
+        )
+
+        echo "$stale"
+        echo "stale_deployments=$(echo "$stale" | jq -c .)" >> $GITHUB_OUTPUT
