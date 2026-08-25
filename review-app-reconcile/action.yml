@@ -4,15 +4,15 @@ inputs:
   azure-client-id:
     description: Azure service principal or managed identity client ID when using OIDC
     required: false
-    default: ''
+    default: ""
   azure-subscription-id:
     description: Azure service principal or managed identity subscription ID when using OIDC
     required: false
-    default: ''
+    default: ""
   azure-tenant-id:
     description: Azure service principal or managed identity tenant ID when using OIDC
     required: false
-    default: ''
+    default: ""
   resource-group-name:
     description: azure resource group
     required: true
@@ -106,11 +106,23 @@ runs:
           kubectl get deployments -n "$NAMESPACE" -o json |
           jq -r --arg service_name "${{ inputs.service-name }}" '
             .items[]
-            | select(.metadata.name | test("^" + $service_name + "-(review|pr)-[0-9]+-worker$"))
+            | select(
+                (.metadata.name | startswith($service_name + "-"))
+                and
+                (.metadata.name | contains("worker"))
+                and
+                (
+                  (.metadata.name | test("review-[0-9]+"))
+                  or
+                  (.metadata.name | test("pr-[0-9]+"))
+                )
+              )
             | .metadata.name
           ' |
-          sed -n "s/^${{ inputs.service-name }}-\(review\|pr\)-\([0-9]\+\)-worker$/\2/p"
-          sort -n
+          sed -n \
+            -e 's/.*review-\([0-9]\+\).*/\1/p' \
+            -e 's/.*pr-\([0-9]\+\).*/\1/p' |
+          sort -nu
         )
 
         if [[ -z "$prs" ]]; then
