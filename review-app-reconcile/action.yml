@@ -109,13 +109,7 @@ runs:
             | select(
                 (.metadata.name | startswith($service_name + "-"))
                 and
-                (.metadata.name | contains("worker"))
-                and
-                (
-                  (.metadata.name | test("review-[0-9]+"))
-                  or
-                  (.metadata.name | test("pr-[0-9]+"))
-                )
+                (.metadata.name | test("(pr|review)(-(pr|review))?-[0-9]+($|-)"))
               )
             | .metadata.name
           ' |
