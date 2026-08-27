@@ -59,6 +59,11 @@ inputs:
     required: false
     default: ""
 
+  sonarscan-exclusions:
+    description: "Comma-separated list of analysis exclusion patterns."
+    required: false
+    default: ""
+
   use-global-json:
     description: "Use global.json to select SDK."
     required: false
@@ -118,10 +123,22 @@ runs:
 
         echo "Starting SonarCloud analysis for ${{ inputs.sonarcloud-project-key }}"
 
+        if [ -n "${{ inputs.sonarscan-exclusions }}" ]; then
+          ANALYSIS_EXCLUSIONS_ARG="/d:sonar.exclusions=${{ inputs.sonarscan-exclusions }}"
+        else
+          ANALYSIS_EXCLUSIONS_ARG=""
+        fi
+
         if [ -n "${{ inputs.coverage-report-path }}" ]; then
           COVERAGE_ARG="/d:sonar.coverageReportPaths=${{ inputs.coverage-report-path }}"
         else
           COVERAGE_ARG=""
+        fi
+
+        if [ -n "${{ inputs.coverage-exclusions }}" ]; then
+          COVERAGE_EXCLUSIONS_ARG="/d:sonar.coverage.exclusions=${{ inputs.coverage-exclusions }}"
+        else
+          COVERAGE_EXCLUSIONS_ARG=""
         fi
 
         dotnet tool run dotnet-sonarscanner begin \
@@ -129,8 +146,9 @@ runs:
           /k:"${{ inputs.sonarcloud-project-key }}" \
           /d:sonar.host.url="${{ inputs.sonarcloud-url }}" \
           /d:sonar.token="$TOKEN" \
+          ${ANALYSIS_EXCLUSIONS_ARG} \
           ${COVERAGE_ARG} \
-          /d:sonar.coverage.exclusions="${{ inputs.coverage-exclusions }}" \
+          ${COVERAGE_EXCLUSIONS_ARG} \
           /d:sonar.scanner.skipJreProvisioning=true \
           ${{ inputs.sonarscan-args }}
 
