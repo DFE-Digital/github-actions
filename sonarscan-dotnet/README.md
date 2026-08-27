@@ -26,7 +26,8 @@ It:
 - `dotnet-version`: .NET SDK version used when not using global.json
 - `dotnet-tool-restore`: Runs `dotnet tool restore` when true
 - `java-distribution`: Java distribution used by SonarScanner (e.g. zulu, temurin, microsoft) (Default: zulu)
-- `java-version`: Java version used by SonarScanner
+- `java-version`: Java version installed for SonarScanner (Default: 21)
+- `skip-jre-provisioning`: Stops SonarScanner downloading its own JRE (Default: false)
 - `sonarcloud-project-key`: SonarCloud project key
 - `sonarcloud-organisation`: SonarCloud organisation (Default: dfe-digital)
 - `sonarcloud-token`: SonarCloud authentication token
@@ -87,6 +88,38 @@ If `use-global-json` is true, a `global.json` file must exist in the repository.
 ```yaml
 with:
   build-command: dotnet build YourSolution.sln --no-restore --no-incremental
+```
+
+---
+
+## Java and JRE provisioning
+
+SonarScanner for .NET runs the analysis itself in a Java "scanner engine" during the
+`end` step. By default this action lets the scanner download the JRE that SonarQube Cloud
+currently requires, so the Java version tracks the server automatically.
+
+SonarQube Cloud raises its minimum Java version from time to time. When it does, a pinned
+local JDK below the new minimum causes the engine to fail on startup, which surfaces as an
+unhelpful error rather than a version message:
+
+```
+Unhandled exception. System.IO.IOException: Pipe is broken.
+   at SonarScanner.MSBuild.Shim.SonarEngineWrapper.Execute(...)
+##[error]Process completed with exit code 134
+```
+
+Set `skip-jre-provisioning: true` only on runners that cannot reach the JRE download. If
+you do, you own the Java version, and `java-version` must be at or above Sonar's current
+minimum:
+
+```yaml
+- name: SonarCloud scan
+  uses: DFE-Digital/github-actions/sonarscan-dotnet@master
+  with:
+    sonarcloud-project-key: your_project_key
+    sonarcloud-token: ${{ secrets.SONAR_TOKEN }}
+    skip-jre-provisioning: true
+    java-version: 21
 ```
 
 ## Dependabot and SONAR_TOKEN

@@ -32,9 +32,11 @@ inputs:
     default: "zulu"
 
   java-version:
-    description: "Java version used by SonarScanner."
+    description: >
+      Java version installed for SonarScanner. The scanner engine runs on it when
+      skip-jre-provisioning is true; otherwise the scanner provisions its own JRE.
     required: false
-    default: "17"
+    default: "21"
 
   sonarcloud-project-key:
     description: "SonarCloud project key."
@@ -53,6 +55,15 @@ inputs:
     description: "The SonarCloud server URL (typically https://sonarcloud.io)."
     required: false
     default: "https://sonarcloud.io"
+
+  skip-jre-provisioning:
+    description: >
+      If true, SonarScanner will not download its own JRE and will run on the JDK installed
+      by this action (see java-version). Set this only on runners that cannot reach the
+      SonarQube Cloud JRE download, and keep java-version at or above the version Sonar
+      currently requires.
+    required: false
+    default: "false"
 
   sonarscan-args:
     description: "Additional SonarScanner arguments."
@@ -124,6 +135,12 @@ runs:
           COVERAGE_ARG=""
         fi
 
+        if [ "${{ inputs.skip-jre-provisioning }}" = "true" ]; then
+          JRE_ARG="/d:sonar.scanner.skipJreProvisioning=true"
+        else
+          JRE_ARG=""
+        fi
+
         dotnet tool run dotnet-sonarscanner begin \
           /o:"${{ inputs.sonarcloud-organisation }}" \
           /k:"${{ inputs.sonarcloud-project-key }}" \
@@ -131,7 +148,7 @@ runs:
           /d:sonar.token="$TOKEN" \
           ${COVERAGE_ARG} \
           /d:sonar.coverage.exclusions="${{ inputs.coverage-exclusions }}" \
-          /d:sonar.scanner.skipJreProvisioning=true \
+          ${JRE_ARG} \
           ${{ inputs.sonarscan-args }}
 
     - name: Build
