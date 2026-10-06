@@ -79,7 +79,7 @@ runs:
     - name: Truncate oversized message
       shell: bash
       run: |
-        MAX_BYTES=81920
+        MAX_BYTES=22528
 
         MESSAGE=$(cat <<'EOF'
         ${{ inputs.message }}
