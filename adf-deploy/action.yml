@@ -49,13 +49,13 @@ runs:
   steps:
     - name: Checkout
       uses: actions/checkout@v7
-      
+
     - name: Install Az PowerShell module
       run: if('${{ inputs.skipAzModuleInstallation }}' -ne 'true') { Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force }
       shell: pwsh
 
     - uses: azure/login@v3
-      with:
+      with:        
         creds: ${{ inputs.azure-credentials }}
         client-id: ${{ inputs.azure-client-id }}
         tenant-id: ${{ inputs.azure-tenant-id }}

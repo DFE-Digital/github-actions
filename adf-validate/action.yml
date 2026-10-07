@@ -33,7 +33,7 @@ runs:
   steps:
     - name: Checkout
       uses: actions/checkout@v7
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v7
       with:
@@ -44,7 +44,7 @@ runs:
       run: npm install @microsoft/azure-data-factory-utilities
 
     - uses: azure/login@v3
-      with:
+      with:        
         creds: ${{ inputs.azure-credentials }}
         client-id: ${{ inputs.azure-client-id }}
         tenant-id: ${{ inputs.azure-tenant-id }}
