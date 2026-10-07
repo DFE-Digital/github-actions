@@ -1,0 +1,30 @@
+name: Validate ADF
+description: Validates the ADF files in the repository using npm package @microsoft/azure-data-factory-utilities
+
+inputs:
+  github-token:
+    description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
+    required: true
+  adf-path:
+    description: Relative path to the ADF directory (Default = ./adf)
+    default: ./adf
+  adf-resource-id:
+    description: Azure Data Factory resource ID (Required)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 26
+
+    - name: Install ADF Utilities
+      run: npm install @microsoft/azure-data-factory-utilities
+
+    - name: Validate ADF files
+      run: npm run build validate ${{ inputs.adf-path }} ${{ inputs.adf-resource-id }}  
