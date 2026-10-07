@@ -24,7 +24,9 @@ runs:
         node-version: 26
 
     - name: Install ADF Utilities
+      shell: bash
       run: npm install @microsoft/azure-data-factory-utilities
 
     - name: Validate ADF files
+      shell: bash
       run: npm run build validate ${{ inputs.adf-path }} ${{ inputs.adf-resource-id }}  
