@@ -14,7 +14,7 @@ inputs:
   coverage-exclusions:
     description: "Comma-separated list of coverage exclusion patterns."
     required: false
-    default: "**/*.html,**/*.json,**/wwwroot/**,**/Migrations/**,**/bin/**,**/obj/**"
+    default: "**/*.html,**/*.json,**/wwwroot/**,**/Migrations/**,**/bin/**,**/obj/**,**/tests/**,**/Tests/**"
 
   dotnet-version:
     description: "The .NET SDK version to install when not using global.json."
