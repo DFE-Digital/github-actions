@@ -1,0 +1,43 @@
+name: Validate ADF
+description: Validates the ADF files in the repository using npm package @microsoft/azure-data-factory-utilities
+
+inputs:
+  github-token:
+    description: Default Github token retrieved via secrets.GITHUB_TOKEN or PAT with permission to the repository (Required)
+    required: true
+  adf-path:
+    description: Relative path to the ADF directory (Default = ./adf)
+    default: ./adf
+  adf-export-path:
+    description: Relative path to the export directory (Default = ./export)
+    default: ./adf_export
+  adf-resource-id:
+    description: Azure Data Factory resource ID (Required)
+    required: true
+
+outputs:
+  adf-export-url:
+    description: URL of the exported ADF files
+    value: ${{ steps.set-outputs.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 26
+
+    - name: Install ADF Utilities
+      shell: bash
+      run: npm install @microsoft/azure-data-factory-utilities
+
+    - name: Validate ADF files
+      shell: bash
+      run: npm run build export ${{ inputs.adf-path }} ${{ inputs.adf-resource-id }}  ${{ inputs.adf-export-path }}  
+
+    - name: Upload ADF Export
+      uses: actions/upload-artifact@v7
+      with:
+        name: adf-export
+        path: ${{ inputs.adf-export-path }}
