@@ -59,9 +59,9 @@ runs:
     #     get-content ${{ inputs.armTemplateFile }}        
     #   shell: pwsh
 
-    - name: Install Az PowerShell module
-      run: if('${{ inputs.skipAzModuleInstallation }}' -ne 'true') { Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force }
-      shell: pwsh
+    # - name: Install Az PowerShell module
+    #   run: if('${{ inputs.skipAzModuleInstallation }}' -ne 'true') { Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force }
+    #   shell: pwsh
 
     - uses: azure/login@v3
       with:        
