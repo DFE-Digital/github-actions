@@ -47,18 +47,17 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Debug
-      run: |       
-        echo archive
-        echo $(ls -la ./adf-export-archive)
-        echo export
-        echo $(ls -la ./adf-export)
-        echo root
-        echo $(ls -la ./)
-        echo $(pwd)
-        get-content ${{ inputs.armTemplateFile }}
-        Get-InstalledModule
-      shell: pwsh
+    # - name: Debug
+    #   run: |       
+    #     echo archive
+    #     echo $(ls -la ./adf-export-archive)
+    #     echo export
+    #     echo $(ls -la ./adf-export)
+    #     echo root
+    #     echo $(ls -la ./)
+    #     echo $(pwd)
+    #     get-content ${{ inputs.armTemplateFile }}        
+    #   shell: pwsh
 
     - name: Install Az PowerShell module
       run: if('${{ inputs.skipAzModuleInstallation }}' -ne 'true') { Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force }
