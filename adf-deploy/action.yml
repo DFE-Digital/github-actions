@@ -47,6 +47,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Debug
+      run: |       
+        echo archive
+        echo $(ls -la ./adf-export-archive)
+        echo export
+        echo $(ls -la ./adf-export)
+        echo root
+        echo $(ls -la ./)
+        echo $(pwd)
+        get-content ${{ inputs.armTemplateFile }}
+      shell: pwsh
+
     - name: Install Az PowerShell module
       run: if('${{ inputs.skipAzModuleInstallation }}' -ne 'true') { Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force }
       shell: pwsh
@@ -58,15 +70,10 @@ runs:
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
 
-    - name: Debug
+    - name: TestTriggers
       run: |       
-        echo archive
-        echo $(ls -la ./adf-export-archive)
-        echo export
-        echo $(ls -la ./adf-export)
-        echo root
-        echo $(ls -la ./)
-        echo $(pwd)
+        Get-AzContext
+        Get-AzDataFactoryV2Trigger -ResourceGroupName "${{ inputs.resourceGroupName }}" -DataFactoryName "${{ inputs.dataFactoryName }}"
       shell: pwsh
 
     - name: Run Pre-deployment script
