@@ -69,13 +69,15 @@ runs:
         creds: ${{ inputs.azure-credentials }}
         client-id: ${{ inputs.azure-client-id }}
         tenant-id: ${{ inputs.azure-tenant-id }}
-        subscription-id: ${{ inputs.azure-subscription-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}- 
 
-    - name: TestTriggers
-      run: |       
-        Get-AzContext
-        Get-AzDataFactoryV2Trigger -ResourceGroupName "${{ inputs.resourceGroupName }}" -DataFactoryName "${{ inputs.dataFactoryName }}"
-      shell: pwsh
+    - name: debug
+      uses: azure/powershell@v3
+      with:
+        inlineScript: |
+          Get-AzContext
+          Get-AzDataFactoryV2Trigger -ResourceGroupName "${{ inputs.resourceGroupName }}" -DataFactoryName "${{ inputs.dataFactoryName }}"
+        azPSVersion: "latest"
 
     - name: Run Pre-deployment script
       uses: azure/powershell@v3
