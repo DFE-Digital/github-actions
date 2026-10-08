@@ -57,6 +57,7 @@ runs:
         echo $(ls -la ./)
         echo $(pwd)
         get-content ${{ inputs.armTemplateFile }}
+        Get-InstalledModule
       shell: pwsh
 
     - name: Install Az PowerShell module
@@ -77,14 +78,16 @@ runs:
       shell: pwsh
 
     - name: Run Pre-deployment script
-      run: |
-        ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
-          -armTemplate "${{ inputs.armTemplateFile }}" `
-          -ResourceGroupName "${{ inputs.resourceGroupName }}" `
-          -DataFactoryName "${{ inputs.dataFactoryName }}" `
-          -predeployment $true `
-          -deleteDeployment $false
-      shell: pwsh
+      uses: azure/powershell@v3
+      with:
+        inlineScript: |
+          ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+            -armTemplate "${{ inputs.armTemplateFile }}" `
+            -ResourceGroupName "${{ inputs.resourceGroupName }}" `
+            -DataFactoryName "${{ inputs.dataFactoryName }}" `
+            -predeployment $true `
+            -deleteDeployment $false
+        azPSVersion: "latest"
 
     - name: Run ARM deploy
       uses: azure/arm-deploy@v2
@@ -95,11 +98,13 @@ runs:
         parameters: ${{ inputs.armTemplateParametersFile }} factoryName=${{ inputs.dataFactoryName }} ${{ inputs.additionalParameters }}
         
     - name: Run Post-deployment script
-      run: |
-        ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
-          -armTemplate "${{ inputs.armTemplateFile }}" `
-          -ResourceGroupName "${{ inputs.resourceGroupName }}" `
-          -DataFactoryName '${{ inputs.dataFactoryName }}' `
-          -predeployment $false `
-          -deleteDeployment $false
-      shell: pwsh
+      uses: azure/powershell@v3
+      with:
+        inlineScript: |
+          ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+            -armTemplate "${{ inputs.armTemplateFile }}" `
+            -ResourceGroupName "${{ inputs.resourceGroupName }}" `
+            -DataFactoryName '${{ inputs.dataFactoryName }}' `
+            -predeployment $false `
+            -deleteDeployment $false
+        azPSVersion: "latest"      
