@@ -92,17 +92,6 @@ runs:
       with:
         project_id: ${{ inputs.gcp-project-id }}
         workload_identity_provider: ${{ inputs.gcp-wip }}
-    
-    - name: Debug deploy-to-aks inputs
-      shell: bash
-      run: |
-        echo "CLIENT length: ${#CLIENT}"
-        echo "SUB length: ${#SUB}"
-        echo "TENANT length: ${#TENANT}"
-      env:
-        CLIENT: ${{ inputs.azure-client-id }}
-        SUB: ${{ inputs.azure-subscription-id }}
-        TENANT: ${{ inputs.azure-tenant-id }}
 
     - uses: DFE-Digital/github-actions/set-kubelogin-environment@master
       with:
