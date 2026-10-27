@@ -15,9 +15,9 @@ runs:
       sudo dpkg --status postgresql-client-14 2>&1 && sudo apt-get --purge remove postgresql-client-14 || true
       sudo dpkg --status postgresql-client-15 2>&1 && sudo apt-get --purge remove postgresql-client-15 || true
       sudo dpkg --status postgresql-client-16 2>&1 && sudo apt-get --purge remove postgresql-client-16 || true
-      wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+      curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
       RELEASE=$(lsb_release -cs)
-      echo "deb http://apt.postgresql.org/pub/repos/apt/ ${RELEASE}"-pgdg main | sudo tee  /etc/apt/sources.list.d/pgdg.list
+      echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt ${RELEASE}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
       cat /etc/apt/sources.list.d/pgdg.list
       sudo apt-get update
       sudo apt-get install -y postgresql-client-"${{inputs.version}}"
