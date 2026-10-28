@@ -100,7 +100,7 @@ runs:
       run: |
         REPLICATION_SLOT_COUNT=$(./konduit.sh -n ${{ env.NAMESPACE }} -t 300 -q -x ${{ inputs.app-name }} -- psql -qtAXc 'SELECT count(*)from pg_replication_slots;')
         if [[ ${REPLICATION_SLOT_COUNT} -gt 0 ]]; then
-          WAL_USED=$(./konduit.sh -n ${{ env.NAMESPACE }} -t 300 -q -x ${{ inputs.app-name }} -- psql -qtAXc 'SELECT pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) from pg_replication_slots;')
+          WAL_USED=$(./konduit.sh -n ${{ env.NAMESPACE }} -t 300 -q -x ${{ inputs.app-name }} -- psql -qtAXc 'SELECT COALESCE(MAX(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)), 0) FROM pg_replication_slots;')
           if [[ ${WAL_USED} =~ ^[0-9]+$ ]]; then
             echo "WAL_USED=${WAL_USED}"
             echo "WAL_THRESHOLD=${{ env.WAL_THRESHOLD }}"
