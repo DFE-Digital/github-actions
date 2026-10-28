@@ -16,6 +16,7 @@ A failure message (status: failure) displays the title in red.
 - `status`: Message status, either good (green), warning (amber), or attention (red) (default: "attention")
 - `minimal` : Send full message or minimal. True of False (default: "false")
 - `ghrepo` : Is this workflow running from a github repo?. True of False (default: "true")
+- `max-message-length` : Maximum characters of the message to post. Longer messages are truncated and a link to the workflow run is appended (default: "500")
 
 ## Example
 

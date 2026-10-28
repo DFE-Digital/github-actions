@@ -33,6 +33,10 @@ inputs:
     description: is this running from a github repository?
     required: false
     default: "true"
+  max-message-length:
+    description: Maximum number of characters of the message to post. Longer messages are truncated with a link to the workflow run
+    required: false
+    default: "500"
 
 runs:
   using: composite
@@ -78,47 +82,33 @@ runs:
 
     - name: Truncate oversized message
       shell: bash
+      env:
+        MAX_CHARS: ${{ inputs.max-message-length }}
       run: |
-        MAX_BYTES=22528
-
         MESSAGE=$(cat <<'EOF'
         ${{ inputs.message }}
         EOF
         )
 
-                CURRENT_BYTES=$(printf "%s" "$MESSAGE" | wc -c)
+        CURRENT_CHARS=${#MESSAGE}
 
-                echo "Current bytes: $CURRENT_BYTES"
-                echo "Max bytes: $MAX_BYTES"
+        echo "Current chars: $CURRENT_CHARS"
+        echo "Max chars: $MAX_CHARS"
 
-                if [ "$CURRENT_BYTES" -gt "$MAX_BYTES" ]; then
+        if [ "$CURRENT_CHARS" -gt "$MAX_CHARS" ]; then
+          MESSAGE="${MESSAGE:0:$MAX_CHARS}...
 
-                  SUFFIX="
-
-        Message truncated because it exceeded the Teams message size limit.
-        Please view the GitHub Actions workflow run for the complete output:
+        Message truncated. See the workflow run for the full output:
         ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-                  SUFFIX_BYTES=$(printf "%s" "$SUFFIX" | wc -c)
-                  TRUNCATE_BYTES=$((MAX_BYTES - SUFFIX_BYTES))
+          echo "Teams message truncated from $CURRENT_CHARS chars to $MAX_CHARS chars"
+        fi
 
-                  TRUNCATED_MESSAGE=$(printf "%s" "$MESSAGE" | head -c "$TRUNCATE_BYTES" || true)
-
-                  {
-                    echo "TEAMS_MESSAGE<<EOF"
-                    printf "%s" "$TRUNCATED_MESSAGE"
-                    printf "%s\n" "$SUFFIX"
-                    echo "EOF"
-                  } >> "$GITHUB_ENV"
-
-                  echo "Teams message truncated from $CURRENT_BYTES bytes to $MAX_BYTES bytes"
-                else
-                  {
-                    echo "TEAMS_MESSAGE<<EOF"
-                    printf "%s\n" "$MESSAGE"
-                    echo "EOF"
-                  } >> "$GITHUB_ENV"
-                fi
+        {
+          echo "TEAMS_MESSAGE<<EOF"
+          printf "%s\n" "$MESSAGE"
+          echo "EOF"
+        } >> "$GITHUB_ENV"
 
     - name: Send minimal notification to teams
       shell: bash
