@@ -43,6 +43,9 @@ inputs:
   secret-files:
     description: Secret files to pass into docker buildx (id=path)
     required: false
+  secrets:
+    description: Secrets to pass into docker buildx (id=path)
+    required: false
 
 outputs:
   tag:
@@ -171,6 +174,7 @@ runs:
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
         secret-files: ${{ inputs.secret-files }}
+        secrets: ${{ inputs.secrets }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
       env:
@@ -190,6 +194,7 @@ runs:
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
         secret-files: ${{ inputs.secret-files }}
+        secrets: ${{ inputs.secrets }}
       env:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
@@ -215,6 +220,7 @@ runs:
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
         secret-files: ${{ inputs.secret-files }}
+        secrets: ${{ inputs.secrets }}
         labels: |
           org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
       env:
@@ -235,6 +241,7 @@ runs:
         context: ${{ inputs.context }}
         target: ${{ inputs.target }}
         secret-files: ${{ inputs.secret-files }}
+        secrets: ${{ inputs.secrets }}
       env:
         DOCKER_BUILD_RECORD_UPLOAD: false
 
