@@ -1,0 +1,263 @@
+name: PostgreSQL Tools
+
+description: >
+  Create, list and restore PostgreSQL backups using a temporary
+  db-tools pod running inside AKS.
+
+inputs:
+
+  operation:
+    description: >
+      backup | list-backups | restore | restore-custom
+    required: true
+
+  service-name:
+    description: Service deployment name
+    required: true
+
+  service-short:
+    description: Service short code
+    required: true
+
+  environment:
+    description: Environment name
+    required: true
+
+  tf-vars-path:
+    description: Location of *.tfvars.json files
+    required: true
+
+  resource-prefix:
+    description: Azure resource prefix (e.g. s189t01)
+    required: true
+
+  restore-file:
+    description: Backup file to restore
+    required: false
+
+  destination-server:
+    description: Target PostgreSQL server for restore-custom
+    required: false
+
+  destination-database:
+    description: Target PostgreSQL database for restore-custom
+    required: false
+
+runs:
+  using: composite
+
+  steps:
+
+    - name: Install kubectl
+      uses: DFE-Digital/github-actions/set-kubectl@master
+
+    - name: Set kubelogin environment
+      uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+
+    - name: Make scripts executable
+      shell: bash
+      run: |
+        chmod +x "${{ github.action_path }}/scripts/"*.sh
+
+    - name: Derive configuration
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        SERVICE_NAME: ${{ inputs.service-name }}
+        SERVICE_SHORT: ${{ inputs.service-short }}
+        TF_VARS_PATH: ${{ inputs.tf-vars-path }}
+        RESOURCE_PREFIX: ${{ inputs.resource-prefix }}
+      run: |
+
+        source global_config/${ENVIRONMENT}.sh
+
+        TF_VARS_FILE="${TF_VARS_PATH}/${ENVIRONMENT}.tfvars.json"
+
+        CLUSTER=$(jq -r '.cluster' "${TF_VARS_FILE}")
+        NAMESPACE=$(jq -r '.namespace' "${TF_VARS_FILE}")
+
+        echo "CLUSTER=${CLUSTER}" >> "$GITHUB_ENV"
+        echo "NAMESPACE=${NAMESPACE}" >> "$GITHUB_ENV"
+
+        STORAGE_ACCOUNT_NAME="${RESOURCE_PREFIX}${SERVICE_SHORT}dbbkp${CONFIG_SHORT}sa"
+
+        echo "STORAGE_ACCOUNT_NAME=${STORAGE_ACCOUNT_NAME}" >> "$GITHUB_ENV"
+
+        DEPLOYMENT_NAME="${SERVICE_NAME}-${CONFIG}"
+
+        echo "DEPLOYMENT_NAME=${DEPLOYMENT_NAME}" >> "$GITHUB_ENV"
+
+        DB_TOOLS_POD_NAME="${DEPLOYMENT_NAME}-postgres-db-tools-pod"
+
+        echo "DB_TOOLS_POD_NAME=${DB_TOOLS_POD_NAME}" >> "$GITHUB_ENV"
+
+    - name: Configure cluster
+      shell: bash
+      run: |
+
+        case "${CLUSTER}" in
+
+          test)
+            CLUSTER_RG="s189t01-tsc-ts-rg"
+            CLUSTER_NAME="s189t01-tsc-test-aks"
+            ;;
+
+          platform-test)
+            CLUSTER_RG="s189t01-tsc-pt-rg"
+            CLUSTER_NAME="s189t01-tsc-platform-test-aks"
+            ;;
+
+          production)
+            CLUSTER_RG="s189p01-tsc-pd-rg"
+            CLUSTER_NAME="s189p01-tsc-production-aks"
+            ;;
+
+          *)
+            echo "Unknown cluster: ${CLUSTER}"
+            exit 1
+            ;;
+
+        esac
+
+        az aks get-credentials \
+          --overwrite-existing \
+          -g "${CLUSTER_RG}" \
+          -n "${CLUSTER_NAME}"
+
+        kubelogin convert-kubeconfig -l "${AAD_LOGIN_METHOD}"
+
+    - name: Discover secret reference
+      shell: bash
+      run: |
+
+        SECRET_REF_NAME=$(
+          kubectl get deployment "${DEPLOYMENT_NAME}" \
+            -n "${NAMESPACE}" \
+            -o json |
+          jq -r '.spec.template.spec.containers[].envFrom[]?.secretRef?.name // empty' |
+          head -1
+        )
+
+        if [ -z "${SECRET_REF_NAME}" ]; then
+          echo "Unable to determine SECRET_REF_NAME"
+          exit 1
+        fi
+
+        echo "SECRET_REF_NAME=${SECRET_REF_NAME}" >> "$GITHUB_ENV"
+
+    - name: Create backup SAS secret
+      shell: bash
+      env:
+        OPERATION: ${{ inputs.operation }}
+        RESTORE_FILE: ${{ inputs.restore-file }}
+      run: |
+
+        EXPIRY=$(
+          python3 -c 'from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc)+timedelta(hours=2)).strftime("%Y-%m-%dT%H:%MZ"))'
+        )
+
+        export STORAGE_ACCOUNT_NAME
+        export CONTAINER_NAME="database-backup"
+        export NAMESPACE
+        export EXPIRY
+
+        case "${OPERATION}" in
+
+          backup)
+
+            export SAS_PERMISSIONS="cw"
+
+            TODAY=$(date +"%F_%H%M%S")
+
+            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup/postgres-backup-${TODAY}.sql"
+
+            ;;
+
+          list-backups)
+
+            export SAS_PERMISSIONS="rl"
+
+            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup"
+
+            ;;
+
+          restore|restore-custom)
+
+            export SAS_PERMISSIONS="r"
+
+            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup/${RESTORE_FILE}"
+
+            ;;
+
+          *)
+
+            echo "Unknown operation: ${OPERATION}"
+            exit 1
+
+            ;;
+
+        esac
+
+        "${{ github.action_path }}/scripts/create-backup-secret.sh"
+
+    - name: Create db tools pod
+      shell: bash
+      run: |
+
+        export TEMPLATE_FILE="${{ github.action_path }}/templates/db-pod.yaml.tpl"
+
+        export NAMESPACE
+        export DB_TOOLS_POD_NAME
+        export SECRET_REF_NAME
+
+        "${{ github.action_path }}/scripts/create-db-tools-pod.sh"
+
+    - name: Execute operation
+      shell: bash
+      env:
+        OPERATION: ${{ inputs.operation }}
+        DESTINATION_SERVER: ${{ inputs.destination-server }}
+        DESTINATION_DATABASE: ${{ inputs.destination-database }}
+      run: |
+
+        export CLEANUP_DB_TOOLS_POD=true
+        export NAMESPACE
+        export DB_TOOLS_POD_NAME
+
+        case "${OPERATION}" in
+
+          backup)
+
+            "${{ github.action_path }}/scripts/db-backup.sh"
+
+            ;;
+
+          list-backups)
+
+            "${{ github.action_path }}/scripts/db-list-backups.sh"
+
+            ;;
+
+          restore)
+
+            "${{ github.action_path }}/scripts/db-restore.sh"
+
+            ;;
+
+          restore-custom)
+
+            export DESTINATION_SERVER
+            export DESTINATION_DATABASE
+
+            "${{ github.action_path }}/scripts/db-restore-custom-target.sh"
+
+            ;;
+
+          *)
+
+            echo "Unknown operation: ${OPERATION}"
+            exit 1
+
+            ;;
+
+        esac
