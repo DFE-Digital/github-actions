@@ -98,9 +98,29 @@ runs:
     - name: Check wal log size
       shell: bash
       run: |
-        REPLICATION_SLOT_COUNT=$(./konduit.sh -n ${{ env.NAMESPACE }} -t 300 -q -x ${{ inputs.app-name }} -- psql -qtAXc 'SELECT count(*)from pg_replication_slots;')
+        # The konduit tunnel (kubectl exec + port-forward through the AKS API server)
+        # intermittently drops, giving "Connection refused" or "server closed the
+        # connection unexpectedly". Each query opens its own tunnel, so retrying is safe
+        # for these read-only queries.
+        MAX_ATTEMPTS=${KONDUIT_MAX_ATTEMPTS:-3}
+        run_query() {
+          local query="$1" attempt out
+          for attempt in $(seq 1 ${MAX_ATTEMPTS}); do
+            if out=$(./konduit.sh -n ${{ env.NAMESPACE }} -t 300 -q -x ${{ inputs.app-name }} -- psql -qtAXc "${query}"); then
+              echo "${out}"
+              return 0
+            fi
+            echo "::warning::konduit query failed (attempt ${attempt}/${MAX_ATTEMPTS})" >&2
+            if [[ ${attempt} -lt ${MAX_ATTEMPTS} ]]; then
+              sleep $((attempt * ${KONDUIT_RETRY_DELAY:-15}))
+            fi
+          done
+          return 1
+        }
+
+        REPLICATION_SLOT_COUNT=$(run_query 'SELECT count(*)from pg_replication_slots;')
         if [[ ${REPLICATION_SLOT_COUNT} -gt 0 ]]; then
-          WAL_USED=$(./konduit.sh -n ${{ env.NAMESPACE }} -t 300 -q -x ${{ inputs.app-name }} -- psql -qtAXc 'SELECT COALESCE(MAX(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)), 0) FROM pg_replication_slots;')
+          WAL_USED=$(run_query 'SELECT COALESCE(MAX(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)), 0) FROM pg_replication_slots;')
           if [[ ${WAL_USED} =~ ^[0-9]+$ ]]; then
             echo "WAL_USED=${WAL_USED}"
             echo "WAL_THRESHOLD=${{ env.WAL_THRESHOLD }}"
