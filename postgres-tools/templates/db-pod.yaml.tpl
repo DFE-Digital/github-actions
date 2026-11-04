@@ -13,6 +13,7 @@ spec:
   containers:
     - name: postgres-db-tools-pod
       image: ghcr.io/dfe-digital/teacher-services-cloud-db-backup:main
+      imagePullPolicy: Always
 
       envFrom:
         - secretRef:
