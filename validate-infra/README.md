@@ -46,7 +46,7 @@ Your Makefile's terraform plan commands should use `${DETAILED_EXITCODE}` to inc
 | `gcp-wip`               | Full identifier of the GCP Workload Identity Provider          | No       | -                               |
 | `gcp-project-id`        | GCP project ID used for workload identity federation           | No       | -                               |
 | `environment`           | Environment to validate (test, platform-test, production)      | Yes      | -                               |
-| `terraform-main-ref`    | Git ref (branch/tag/SHA) to use for terraform code             | No       | `main`                          |
+| `target-branch`         | Git ref (branch/tag/SHA) to use for terraform code             | No       | `main`                          |
 | `terraform-base`        | Path to the terraform files                                    | No       | `cluster/terraform_aks_cluster` |
 | `terraform-version-file`| Name of file containing terraform version                      | No       | `terraform.tf`                  |
 | `teams-webhook-url`     | A valid webhook URL for the destination Teams channel          | No       | -                               |
