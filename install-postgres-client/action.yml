@@ -4,22 +4,22 @@ inputs:
   version:
     description: Postgres version
     required: true
-    default: '16'
+    default: "16"
 runs:
   using: composite
   steps:
-  - name: Install Postgres client
-    shell: bash
-    id: install_postgres_client
-    run: |
-      sudo dpkg --status postgresql-client-14 2>&1 && sudo apt-get --purge remove postgresql-client-14 || true
-      sudo dpkg --status postgresql-client-15 2>&1 && sudo apt-get --purge remove postgresql-client-15 || true
-      sudo dpkg --status postgresql-client-16 2>&1 && sudo apt-get --purge remove postgresql-client-16 || true
-      curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
-      RELEASE=$(lsb_release -cs)
-      echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt ${RELEASE}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-      cat /etc/apt/sources.list.d/pgdg.list
-      sudo apt-get update
-      sudo apt-get install -y postgresql-client-"${{inputs.version}}"
-      psql --version
-      pg_dump --version
+    - name: Install Postgres client
+      shell: bash
+      id: install_postgres_client
+      run: |
+        sudo dpkg --status postgresql-client-14 2>&1 && sudo apt-get --purge remove postgresql-client-14 || true
+        sudo dpkg --status postgresql-client-15 2>&1 && sudo apt-get --purge remove postgresql-client-15 || true
+        sudo dpkg --status postgresql-client-16 2>&1 && sudo apt-get --purge remove postgresql-client-16 || true
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/postgresql.gpg
+        RELEASE=$(lsb_release -cs)
+        echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt ${RELEASE}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+        cat /etc/apt/sources.list.d/pgdg.list
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client-"${{inputs.version}}"
+        psql --version
+        pg_dump --version
