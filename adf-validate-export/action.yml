@@ -1,0 +1,72 @@
+name: Validate and Export ADF
+description: Validates the ADF files in the repository using npm package @microsoft/azure-data-factory-utilities
+
+inputs:
+  azure-credentials:
+    description: 'A JSON string containing service principal credentials e.g. {"client_id": "x", "client_secret": "x", "subscription_id": "x", "tenant_id": "x"}'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure service principal or managed identity client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure service principal or managed identity subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure service principal or managed identity tenant ID when using OIDC
+    required: false
+    default: ''
+  adf-path:
+    description: Relative path to the ADF directory (Default = ./adf)
+    default: ./adf
+  adf-export-path:
+    description: Relative path to the export directory (Default = ./export)
+    default: ./adf_export
+  adf-resource-id:
+    description: Azure Data Factory resource ID (Required)
+    required: true
+  adf-validate-only:
+    description: Flag to indicate whether to only validate the ADF files without exporting (Default = false)
+    default: false
+
+outputs:
+  adf-export-url:
+    description: URL of the exported ADF files
+    value: ${{ steps.set-outputs.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 26
+
+    - name: Install ADF Utilities
+      shell: bash
+      run: npm install @microsoft/azure-data-factory-utilities
+
+    - uses: azure/login@v3
+      with:        
+        creds: ${{ inputs.azure-credentials }}
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Validate ADF files
+      shell: bash
+      run: npm run build validate ${{ inputs.adf-path }} ${{ inputs.adf-resource-id }}  
+
+    - name: Export ADF files
+      if: ${{ inputs.adf-validate-only == 'false' }}
+      shell: bash
+      run: npm run build export ${{ inputs.adf-path }} ${{ inputs.adf-resource-id }}  ${{ inputs.adf-export-path }}  
+
+    - name: Upload ADF Export
+      if: ${{ inputs.adf-validate-only == 'false' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: adf-export
+        path: ${{ inputs.adf-export-path }}
