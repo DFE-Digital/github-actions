@@ -1,0 +1,397 @@
+name: Maintenance V2
+description: Enable or disable maintenance for a service with centralized templates
+inputs:
+  # Required inputs
+  environment:
+    description: Name of the app environment
+    required: true
+  mode:
+    description: Maintenance mode to implement, either enable or disable
+    required: true
+  
+  # Azure authentication inputs
+  azure-credentials:
+    description: 'JSON string containing service principal credentials'
+    required: false
+    default: ''
+  azure-client-id:
+    description: Azure client ID when using OIDC
+    required: false
+    default: ''
+  azure-subscription-id:
+    description: Azure subscription ID when using OIDC
+    required: false
+    default: ''
+  azure-tenant-id:
+    description: Azure tenant ID when using OIDC
+    required: false
+    default: ''
+  
+  # Docker configuration
+  docker-repository:
+    description: Name of the maint app docker repository
+    required: false
+  github-token:
+    description: GitHub token for repository access
+    required: false
+  
+  # Config file path (optional - will use maint-config.txt if it exists)
+  config-file:
+    description: Path to maintenance configuration file
+    required: false
+    default: 'maint-config.txt'
+  
+  template-ref:
+    description: Template release version to use (e.g., v1.0.0, v1.0.1)
+    required: false
+    default: 'v1.0.0'
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/login@v2
+      if: inputs.azure-credentials != ''
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - uses: azure/login@v2
+      if: inputs.azure-credentials == ''
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Set ARM and kubelogin environment
+      uses: DFE-Digital/github-actions/set-kubelogin-environment@master
+      with:
+        azure-credentials: ${{ inputs.azure-credentials }}
+        azure-client-id: ${{ inputs.azure-client-id }}
+        azure-tenant-id: ${{ inputs.azure-tenant-id }}
+        azure-subscription-id: ${{ inputs.azure-subscription-id }}
+
+    - name: Load maintenance configuration
+      if: inputs.mode == 'enable'
+      id: load-config
+      shell: bash
+      run: |
+        echo "Loading configuration..."
+        
+        # Load service configuration from Makefile
+        if [[ -f "Makefile" ]]; then
+          echo "Loading service configuration from Makefile..."
+          SERVICE_NAME=$(grep "^SERVICE_NAME=" Makefile | cut -d'=' -f2 | tr -d ' ')
+          SERVICE_SHORT=$(grep "^SERVICE_SHORT=" Makefile | cut -d'=' -f2 | tr -d ' ')
+          echo "Found SERVICE_NAME: ${SERVICE_NAME}"
+          echo "Found SERVICE_SHORT: ${SERVICE_SHORT}"
+        else
+          # Fallback: extract from docker repository
+          echo "No Makefile found, extracting from docker repository..."
+          REPO_NAME=$(echo "${{ inputs.docker-repository }}" | sed 's|.*/||')
+          SERVICE_NAME=$(echo "$REPO_NAME" | sed 's/-maintenance$//')
+          SERVICE_SHORT="${SERVICE_NAME}"
+        fi
+        
+        # Set default maintenance values
+        SERVICE_PRETTY="This service"
+        MAINTENANCE_MESSAGE="We are currently carrying out essential maintenance. Please try again later."
+        ESTIMATED_RETURN=""
+        STATUS_PAGE=""
+        CONTACT_EMAIL=""
+        
+        # Check if config file exists and load it
+        if [[ -f "${{ inputs.config-file }}" ]]; then
+          echo "Loading maintenance configuration from ${{ inputs.config-file }}"
+          # Source the config file to load variables
+          source "${{ inputs.config-file }}"
+        else
+          echo "No config file found at ${{ inputs.config-file }}, using defaults"
+        fi
+        
+        # If SERVICE_PRETTY not set in config, use SERVICE_NAME as a fallback
+        if [[ -z "${SERVICE_PRETTY}" ]] || [[ "${SERVICE_PRETTY}" == "This service" ]]; then
+          # Try to make SERVICE_NAME more readable by replacing hyphens with spaces and capitalizing
+          SERVICE_PRETTY=$(echo "${SERVICE_NAME}" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+          echo "SERVICE_PRETTY not set in config, using: ${SERVICE_PRETTY}"
+        fi
+        
+        # Export variables for use in later steps
+        echo "service-name=${SERVICE_NAME}" >> $GITHUB_OUTPUT
+        echo "service-short=${SERVICE_SHORT}" >> $GITHUB_OUTPUT
+        echo "service-pretty=${SERVICE_PRETTY}" >> $GITHUB_OUTPUT
+        echo "maintenance-message=${MAINTENANCE_MESSAGE}" >> $GITHUB_OUTPUT
+        echo "estimated-return=${ESTIMATED_RETURN}" >> $GITHUB_OUTPUT
+        echo "status-page=${STATUS_PAGE}" >> $GITHUB_OUTPUT
+        echo "contact-email=${CONTACT_EMAIL}" >> $GITHUB_OUTPUT
+        
+        echo "Configuration loaded:"
+        echo "  Service Name: ${SERVICE_NAME}"
+        echo "  Service Short: ${SERVICE_SHORT}"
+        echo "  Service Pretty: ${SERVICE_PRETTY}"
+        echo "  Message: ${MAINTENANCE_MESSAGE}"
+        echo "  Contact: ${CONTACT_EMAIL}"
+
+    - name: Fetch and customize maintenance page templates
+      if: inputs.mode == 'enable'
+      shell: bash
+      run: |
+        echo "Fetching maintenance page templates from GitHub release..."
+        echo "Current directory: $(pwd)"
+        echo "GitHub workspace: ${{ github.workspace }}"
+        
+        # Create maintenance_page directory if it doesn't exist
+        mkdir -p maintenance_page
+        
+        # Determine template version to fetch
+        TEMPLATE_VERSION="${{ inputs.template-ref }}"
+        if [ -z "${TEMPLATE_VERSION}" ] || [ "${TEMPLATE_VERSION}" == "main" ]; then
+          # Default to v1.0.0 or latest stable version
+          TEMPLATE_VERSION="v1.0.0"
+        fi
+        
+        # Construct download URL
+        # The archive name in the release is just "maintenance-templates.tar.gz" (without version in filename)
+        ARCHIVE_NAME="maintenance-templates.tar.gz"
+        DOWNLOAD_URL="https://github.com/DFE-Digital/teacher-services-cloud/releases/download/maintenance-templates-${TEMPLATE_VERSION}/${ARCHIVE_NAME}"
+        
+        echo "Downloading template version: ${TEMPLATE_VERSION}"
+        echo "Download URL: ${DOWNLOAD_URL}"
+        
+        # Download the template archive
+        curl -L -o "${ARCHIVE_NAME}" "${DOWNLOAD_URL}"
+        
+        if [ ! -f "${ARCHIVE_NAME}" ]; then
+          echo "Error: Failed to download template archive from ${DOWNLOAD_URL}"
+          echo "Trying alternative URL format..."
+          
+          # Try alternative URL format (without 'maintenance-template-' prefix in tag)
+          DOWNLOAD_URL="https://github.com/DFE-Digital/teacher-services-cloud/releases/download/${TEMPLATE_VERSION}/${ARCHIVE_NAME}"
+          curl -L -o "${ARCHIVE_NAME}" "${DOWNLOAD_URL}"
+          
+          if [ ! -f "${ARCHIVE_NAME}" ]; then
+            echo "Error: Failed to download template archive"
+            exit 1
+          fi
+        fi
+        
+        echo "Downloaded: ${ARCHIVE_NAME} ($(du -h ${ARCHIVE_NAME} | cut -f1))"
+        
+        # Extract the archive to a temporary directory
+        echo "Extracting templates..."
+        TEMP_DIR="temp_templates_$$"
+        mkdir -p ${TEMP_DIR}
+        tar -xzf "${ARCHIVE_NAME}" -C ${TEMP_DIR}
+        
+        # The archive contains a maintenance_page directory (from the existing release)
+        # Check if it exists, if not check for maintenance-template (future releases)
+        if [ -d "${TEMP_DIR}/maintenance_page" ]; then
+          echo "Found maintenance_page directory in archive"
+          TEMPLATE_DIR="${TEMP_DIR}/maintenance_page"
+        elif [ -d "${TEMP_DIR}/maintenance-template" ]; then
+          echo "Found maintenance-template directory in archive"
+          TEMPLATE_DIR="${TEMP_DIR}/maintenance-template"
+        else
+          echo "Error: Neither maintenance_page nor maintenance-template directory found in archive"
+          ls -la ${TEMP_DIR}/
+          exit 1
+        fi
+        
+        # Copy template files to maintenance_page directory
+        echo "Copying template files from ${TEMPLATE_DIR}..."
+        
+        # Only copy files if they don't already exist (avoid overwriting)
+        if [ ! -f "maintenance_page/Dockerfile" ]; then
+          echo "Copying Dockerfile..."
+          cp ${TEMPLATE_DIR}/Dockerfile maintenance_page/
+        else
+          echo "Dockerfile already exists, skipping..."
+        fi
+        
+        if [ ! -f "maintenance_page/nginx.conf" ]; then
+          echo "Copying nginx.conf..."
+          cp ${TEMPLATE_DIR}/nginx.conf maintenance_page/
+        else
+          echo "nginx.conf already exists, skipping..."
+        fi
+        
+        # Copy html directory from template if it doesn't exist
+        if [ ! -d "maintenance_page/html" ]; then
+          echo "Copying html directory..."
+          cp -r ${TEMPLATE_DIR}/html maintenance_page/
+        else
+          echo "html directory already exists, skipping..."
+        fi
+        
+        # Check if service has the required directories (manifests and scripts remain in service repo)
+        if [ ! -d "${{ github.workspace }}/maintenance_page/manifests/maintenance" ]; then
+          echo "WARNING: No maintenance manifests found in maintenance_page/manifests/maintenance/"
+          echo "Service repository should contain maintenance-specific manifests"
+        fi
+        
+        if [ ! -d "${{ github.workspace }}/maintenance_page/manifests/staging" ] && [ ! -d "${{ github.workspace }}/maintenance_page/manifests/production" ]; then
+          echo "WARNING: No environment-specific manifests found in maintenance_page/manifests/"
+          echo "Please ensure your repository contains:"
+          echo "  - maintenance_page/manifests/staging/ (for staging environment)"
+          echo "  - maintenance_page/manifests/production/ (for production environment)"
+        fi
+        
+        if [ ! -d "${{ github.workspace }}/maintenance_page/scripts" ]; then
+          echo "ERROR: No scripts directory found in maintenance_page/"
+          echo "Service repository must contain maintenance_page/scripts/ with deployment scripts"
+          exit 1
+        fi
+        
+        # Clean up
+        rm -rf ${TEMP_DIR}
+        rm -f "${ARCHIVE_NAME}"
+        
+        # Debug: Verify files were copied
+        echo "Files in maintenance_page directory:"
+        ls -la ${{ github.workspace }}/maintenance_page/
+        
+        echo "Templates fetched successfully"
+        
+        # Apply customizations
+        echo "Applying service customizations..."
+        cd ${{ github.workspace }}
+        
+        # Use environment variables from the config file to replace placeholders
+        # This is safer than trying to pass complex HTML through sed
+        
+        # Create a temporary script to do the replacements using environment variables
+        cat > replace_placeholders.sh << 'SCRIPT_END'
+        #!/bin/bash
+        set -e
+        
+        # Load the config file
+        if [[ -f "$1" ]]; then
+          source "$1"
+        else
+          # Set defaults if no config file
+          SERVICE_PRETTY="This service"
+          MAINTENANCE_MESSAGE="We are currently carrying out essential maintenance. Please try again later."
+          ESTIMATED_RETURN=""
+          STATUS_PAGE=""
+          CONTACT_EMAIL=""
+        fi
+        
+        # Read the HTML file
+        HTML_FILE="$2"
+        
+        # Use temporary files to avoid issues with special characters
+        # Export variables for perl to use
+        export SERVICE_PRETTY
+        export MAINTENANCE_MESSAGE
+        export ESTIMATED_RETURN
+        export STATUS_PAGE
+        export CONTACT_EMAIL
+        
+        # Replace placeholders using perl with environment variables
+        perl -i -pe 's/#SERVICE_PRETTY#/$ENV{SERVICE_PRETTY}/g' "$HTML_FILE"
+        perl -i -pe 's/#MAINTENANCE_MESSAGE#/$ENV{MAINTENANCE_MESSAGE}/g' "$HTML_FILE"
+        
+        # Handle optional fields
+        if [[ -n "${ESTIMATED_RETURN}" ]]; then
+          perl -i -pe 's|#ESTIMATED_RETURN#|$ENV{ESTIMATED_RETURN}|g' "$HTML_FILE"
+        else
+          perl -i -pe 's|#ESTIMATED_RETURN#||g' "$HTML_FILE"
+        fi
+        
+        if [[ -n "${STATUS_PAGE}" ]]; then
+          perl -i -pe 's|#STATUS_PAGE#|$ENV{STATUS_PAGE}|g' "$HTML_FILE"
+        else
+          perl -i -pe 's|#STATUS_PAGE#||g' "$HTML_FILE"
+        fi
+        
+        # Handle contact email
+        if [[ -n "${CONTACT_EMAIL}" ]]; then
+          CONTACT_HTML="<li>Email: <a class=\"govuk-link app-!-overflow-break-word govuk-footer__link\" href=\"mailto:${CONTACT_EMAIL}\">${CONTACT_EMAIL}</a></li>"
+          CONTACT_HTML="${CONTACT_HTML}<li>We aim to respond within 5 working days, or one working day for more urgent queries</li>"
+          export CONTACT_HTML
+          perl -i -pe 's|#CONTACT_INFO#|$ENV{CONTACT_HTML}|g' "$HTML_FILE"
+        else
+          # Remove the entire Get help section if no email
+          perl -i -pe 'BEGIN{undef $/;} s/<h2 class="govuk-heading-m">Get help<\/h2>.*?<\/ul>//smg' "$HTML_FILE"
+        fi
+        SCRIPT_END
+        
+        chmod +x replace_placeholders.sh
+        ./replace_placeholders.sh "${{ inputs.config-file }}" "maintenance_page/html/index.html"
+        rm replace_placeholders.sh
+        
+        echo "Customizations applied successfully"
+        
+        # Use service name from load-config step for manifests
+        SERVICE_NAME="${{ steps.load-config.outputs.service-name }}"
+        echo "Using service name for manifests: $SERVICE_NAME"
+        
+        # Replace placeholders in deployment template (but keep #MAINTENANCE_IMAGE_TAG# for the script to replace)
+        sed -i "s/#SERVICE_NAME#/${SERVICE_NAME}/g" maintenance_page/manifests/maintenance/deployment_maintenance.yml.tmpl
+        sed -i "s|#DOCKER_REPOSITORY#|${{ inputs.docker-repository }}|g" maintenance_page/manifests/maintenance/deployment_maintenance.yml.tmpl
+        
+        # Replace placeholders in service manifest
+        sed -i "s/#SERVICE_NAME#/${SERVICE_NAME}/g" maintenance_page/manifests/maintenance/service_maintenance.yml
+        
+        echo "Manifest placeholders replaced"
+
+    - name: Build and push docker image
+      if: inputs.mode == 'enable'
+      id: build-image
+      uses: DFE-Digital/github-actions/build-docker-image@master
+      with:
+        github-token: ${{ inputs.github-token }}
+        dockerfile-path: maintenance_page/Dockerfile
+        docker-repository: ${{ inputs.docker-repository }}
+        context: maintenance_page
+
+    # Note: We don't clean up maintenance_page directory here because:
+    # 1. The scripts directory is needed by the Makefile for failover.sh
+    # 2. The manifests directory might be needed for checking temp URLs
+    # The directory will be cleaned up when the workflow ends anyway
+
+    - name: Enable maintenance mode
+      if: inputs.mode == 'enable'
+      shell: bash
+      run: make ci ${{ inputs.environment }} maintenance-fail-over
+      env:
+        MAINTENANCE_IMAGE_TAG: ${{steps.build-image.outputs.tag}}
+
+    - name: Disable maintenance mode
+      if: inputs.mode == 'disable'
+      shell: bash
+      run: make ci ${{ inputs.environment }} disable-maintenance
+
+    - name: Maintenance Summary
+      if: success()
+      shell: bash
+      run: |
+        NOW=$(TZ=Europe/London date +"%F %R")
+        echo '## 🚧 Maintenance Page ${{ inputs.mode }}d!' >> $GITHUB_STEP_SUMMARY
+        echo '' >> $GITHUB_STEP_SUMMARY
+        echo '| Field | Value |' >> $GITHUB_STEP_SUMMARY
+        echo '|-------|-------|' >> $GITHUB_STEP_SUMMARY
+        echo "| **Environment** | ${{ inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Time** | ${NOW} (London) |" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ inputs.mode }}" == "enable" ]]; then
+          echo "| **Service** | ${{ steps.load-config.outputs.service-pretty }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Service Name** | ${{ steps.load-config.outputs.service-name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Message** | ${{ steps.load-config.outputs.maintenance-message }} |" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ steps.load-config.outputs.estimated-return }}" ]]; then
+            echo "| **Estimated Return** | (See maintenance page) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${{ steps.load-config.outputs.status-page }}" ]]; then
+            echo "| **Status Page** | (See maintenance page) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${{ steps.load-config.outputs.contact-email }}" ]]; then
+            echo "| **Contact** | ${{ steps.load-config.outputs.contact-email }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '' >> $GITHUB_STEP_SUMMARY
+          
+          # Check for temp URLs if available
+          if [[ -f ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml ]]; then
+            echo '### Temporary URLs' >> $GITHUB_STEP_SUMMARY
+            TEMP_URLS=$(awk '/name:.*cloud/ {print "- " $2}' ./maintenance_page/manifests/${{ inputs.environment }}/ingress_temp*.yml 2>/dev/null || true)
+            if [[ -n "$TEMP_URLS" ]]; then
+              echo "$TEMP_URLS" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+        fi
