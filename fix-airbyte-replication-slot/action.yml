@@ -80,7 +80,7 @@ runs:
     - name: Check replication slot status
       shell: bash
       run: |
-        bin/konduit.sh -n ${{ inputs.namespace }} -t 60 \
+        bin/konduit.sh -n ${{ inputs.namespace }} -t 60 -x \
           ${{ inputs.app-name }} -- \
           psql -c "SELECT slot_name, active, confirmed_flush_lsn, \
                    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained_wal \
@@ -92,7 +92,7 @@ runs:
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           echo "[dry-run] Skipping slot creation. Would have run: pg_create_logical_replication_slot('airbyte_slot', 'pgoutput')"
           echo "[dry-run] Checking slot existence only:"
-          bin/konduit.sh -n ${{ inputs.namespace }} -t 60 \
+          bin/konduit.sh -n ${{ inputs.namespace }} -t 60 -x \
             ${{ inputs.app-name }} -- \
             psql -c "SELECT CASE
                        WHEN NOT EXISTS (
@@ -117,14 +117,14 @@ runs:
           ALTER ROLE CURRENT_USER WITH NOREPLICATION;
         \endif
         EOF
-          bin/konduit.sh -n ${{ inputs.namespace }} -t 60 -i /tmp/fix_slot.sql \
+          bin/konduit.sh -n ${{ inputs.namespace }} -t 60 -x -i /tmp/fix_slot.sql \
             ${{ inputs.app-name }} -- psql
         fi
 
     - name: Verify replication slot after fix
       shell: bash
       run: |
-        bin/konduit.sh -n ${{ inputs.namespace }} -t 60 \
+        bin/konduit.sh -n ${{ inputs.namespace }} -t 60 -x \
           ${{ inputs.app-name }} -- \
           psql -c "SELECT slot_name, active, confirmed_flush_lsn \
                    FROM pg_replication_slots WHERE slot_name = 'airbyte_slot';"
