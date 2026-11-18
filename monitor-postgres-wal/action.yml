@@ -118,9 +118,16 @@ runs:
           return 1
         }
 
-        REPLICATION_SLOT_COUNT=$(run_query 'SELECT count(*)from pg_replication_slots;')
+        # Only the airbyte slot is monitored and dropped. Other slots (for example the
+        # Azure physical slot used for high availability) must not trigger a drop.
+        SLOT_NAME=airbyte_slot
+
+        echo "All replication slots (slot_name|slot_type|active|wal_lag_bytes):"
+        run_query "SELECT slot_name, slot_type, active, pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) FROM pg_replication_slots;"
+
+        REPLICATION_SLOT_COUNT=$(run_query "SELECT count(*) FROM pg_replication_slots WHERE slot_name = '${SLOT_NAME}';")
         if [[ ${REPLICATION_SLOT_COUNT} -gt 0 ]]; then
-          WAL_USED=$(run_query 'SELECT COALESCE(MAX(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)), 0) FROM pg_replication_slots;')
+          WAL_USED=$(run_query "SELECT COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn), 0) FROM pg_replication_slots WHERE slot_name = '${SLOT_NAME}';")
           if [[ ${WAL_USED} =~ ^[0-9]+$ ]]; then
             echo "WAL_USED=${WAL_USED}"
             echo "WAL_THRESHOLD=${{ env.WAL_THRESHOLD }}"
@@ -135,7 +142,7 @@ runs:
             echo "WAL_USED is not a number"
           fi
         else
-          echo "No replication slot"
+          echo "No ${SLOT_NAME} replication slot"
         fi
 
     - name: Notify teams channel if the replication slot is removed
