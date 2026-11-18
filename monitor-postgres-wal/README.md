@@ -2,6 +2,8 @@
 
 If logical replication is enabled for a database, then we want to monitor the replication lag and drop the replication slot if it breaches a defined threshold
 
+Only the `airbyte_slot` slot is monitored and dropped. Other slots, such as the Azure physical slot used for high availability, are listed in the log but never checked against the threshold or dropped.
+
 ## Inputs
 - `app-name`: Name of the aks app deployment (Required)
 - `environment`: Name of the environment (Required)
