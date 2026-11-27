@@ -23,24 +23,32 @@ inputs:
     description: Azure tenant ID
     required: true
 
-  service-name:
-    description: Service deployment name
+  cluster-name:
+    description: AKS cluster name
     required: true
 
-  service-short:
-    description: Service short code
+  cluster-rg:
+    description: Resource group containing the AKS cluster
     required: true
 
-  environment:
-    description: Environment name
+  namespace:
+    description: Kubernetes namespace
     required: true
 
-  tf-vars-path:
-    description: Location of *.tfvars.json files
+  storage-account-name:
+    description: Azure storage account name for backups
     required: true
 
-  resource-prefix:
-    description: Azure resource prefix (e.g. s189t01)
+  deployment-name:
+    description: Kubernetes deployment name
+    required: true
+
+  db-tools-pod-name:
+    description: Name for the PostgreSQL tools pod
+    required: true
+
+  container-name:
+    description: Azure storage container name for backups
     required: true
 
   restore-file:
@@ -54,6 +62,11 @@ inputs:
   destination-database:
     description: Target PostgreSQL database for restore-custom
     required: false
+
+outputs:
+  backup_filename:
+    description: Filename of the successfully created PostgreSQL backup
+    value: ${{ steps.execute_operation.outputs.backup_filename }}
 
 runs:
   using: composite
@@ -75,75 +88,12 @@ runs:
       run: |
         chmod +x "${{ github.action_path }}/scripts/"*.sh
 
-    - name: Derive configuration
-      shell: bash
-      env:
-        ENVIRONMENT: ${{ inputs.environment }}
-        SERVICE_NAME: ${{ inputs.service-name }}
-        SERVICE_SHORT: ${{ inputs.service-short }}
-        TF_VARS_PATH: ${{ inputs.tf-vars-path }}
-        RESOURCE_PREFIX: ${{ inputs.resource-prefix }}
-      run: |
-
-        source global_config/${ENVIRONMENT}.sh
-
-        if [ -n "${AZURE_RESOURCE_PREFIX:-}" ]; then
-          RESOURCE_PREFIX="${AZURE_RESOURCE_PREFIX}"
-        elif [ -n "${RESOURCE_NAME_PREFIX:-}" ]; then
-          RESOURCE_PREFIX="${RESOURCE_NAME_PREFIX}"
-        else
-          echo "Unable to determine resource prefix"
-          exit 1
-        fi
-
-        TF_VARS_FILE="${TF_VARS_PATH}/${ENVIRONMENT}.tfvars.json"
-
-        CLUSTER=$(jq -r '.cluster' "${TF_VARS_FILE}")
-        NAMESPACE=$(jq -r '.namespace' "${TF_VARS_FILE}")
-
-        echo "CLUSTER=${CLUSTER}" >> "$GITHUB_ENV"
-        echo "NAMESPACE=${NAMESPACE}" >> "$GITHUB_ENV"
-
-        STORAGE_ACCOUNT_NAME="${RESOURCE_PREFIX}${SERVICE_SHORT}dbbkp${CONFIG_SHORT}sa"
-
-        echo "STORAGE_ACCOUNT_NAME=${STORAGE_ACCOUNT_NAME}" >> "$GITHUB_ENV"
-
-        DEPLOYMENT_NAME="${SERVICE_NAME}-${CONFIG}"
-
-        echo "DEPLOYMENT_NAME=${DEPLOYMENT_NAME}" >> "$GITHUB_ENV"
-
-        DB_TOOLS_POD_NAME="${DEPLOYMENT_NAME}-postgres-db-tools-pod"
-
-        echo "DB_TOOLS_POD_NAME=${DB_TOOLS_POD_NAME}" >> "$GITHUB_ENV"
-
     - name: Configure cluster
       shell: bash
+      env:
+        CLUSTER_RG: ${{ inputs.cluster-rg }}
+        CLUSTER_NAME: ${{ inputs.cluster-name }}
       run: |
-
-        case "${CLUSTER}" in
-
-          test)
-            CLUSTER_RG="s189t01-tsc-ts-rg"
-            CLUSTER_NAME="s189t01-tsc-test-aks"
-            ;;
-
-          platform-test)
-            CLUSTER_RG="s189t01-tsc-pt-rg"
-            CLUSTER_NAME="s189t01-tsc-platform-test-aks"
-            ;;
-
-          production)
-            CLUSTER_RG="s189p01-tsc-pd-rg"
-            CLUSTER_NAME="s189p01-tsc-production-aks"
-            ;;
-
-          *)
-            echo "Unknown cluster: ${CLUSTER}"
-            exit 1
-            ;;
-
-        esac
-
         az aks get-credentials \
           --overwrite-existing \
           -g "${CLUSTER_RG}" \
@@ -153,6 +103,9 @@ runs:
 
     - name: Discover secret reference
       shell: bash
+      env:
+        DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
+        NAMESPACE: ${{ inputs.namespace }}
       run: |
 
         SECRET_REF_NAME=$(
@@ -175,15 +128,15 @@ runs:
       env:
         OPERATION: ${{ inputs.operation }}
         RESTORE_FILE: ${{ inputs.restore-file }}
+        STORAGE_ACCOUNT_NAME: ${{ inputs.storage-account-name }}
+        CONTAINER_NAME: ${{ inputs.container-name }}
+        NAMESPACE: ${{ inputs.namespace }}
       run: |
 
         EXPIRY=$(
           python3 -c 'from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc)+timedelta(hours=2)).strftime("%Y-%m-%dT%H:%MZ"))'
         )
 
-        export STORAGE_ACCOUNT_NAME
-        export CONTAINER_NAME="database-backup"
-        export NAMESPACE
         export EXPIRY
 
         case "${OPERATION}" in
@@ -194,7 +147,8 @@ runs:
 
             TODAY=$(date +"%F_%H%M%S")
 
-            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup/postgres-backup-${TODAY}.sql"
+            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${CONTAINER_NAME}/postgres-backup-${TODAY}.sql"
+            echo "BACKUP_FILENAME=${BLOB_URL##*/}" >> "$GITHUB_ENV"
 
             ;;
 
@@ -202,7 +156,7 @@ runs:
 
             export SAS_PERMISSIONS="rl"
 
-            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup"
+            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${CONTAINER_NAME}"
 
             ;;
 
@@ -210,7 +164,7 @@ runs:
 
             export SAS_PERMISSIONS="r"
 
-            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup/${RESTORE_FILE}"
+            export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${CONTAINER_NAME}/${RESTORE_FILE}"
 
             ;;
 
@@ -227,27 +181,29 @@ runs:
 
     - name: Create db tools pod
       shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+        DB_TOOLS_POD_NAME: ${{ inputs.db-tools-pod-name }}
       run: |
 
         export TEMPLATE_FILE="${{ github.action_path }}/templates/db-pod.yaml.tpl"
 
-        export NAMESPACE
-        export DB_TOOLS_POD_NAME
         export SECRET_REF_NAME
 
         "${{ github.action_path }}/scripts/create-db-tools-pod.sh"
 
     - name: Execute operation
+      id: execute_operation
       shell: bash
       env:
         OPERATION: ${{ inputs.operation }}
         DESTINATION_SERVER: ${{ inputs.destination-server }}
         DESTINATION_DATABASE: ${{ inputs.destination-database }}
+        NAMESPACE: ${{ inputs.namespace }}
+        DB_TOOLS_POD_NAME: ${{ inputs.db-tools-pod-name }}
       run: |
 
         export CLEANUP_DB_TOOLS_POD=true
-        export NAMESPACE
-        export DB_TOOLS_POD_NAME
 
         case "${OPERATION}" in
 
@@ -286,3 +242,8 @@ runs:
             ;;
 
         esac
+
+        if [ "${OPERATION}" = "backup" ]; then
+          echo "backup_filename=${BACKUP_FILENAME}" >> "$GITHUB_OUTPUT"
+          printf '## PostgreSQL backup\n\n`%s`\n' "${BACKUP_FILENAME}" >> "$GITHUB_STEP_SUMMARY"
+        fi
