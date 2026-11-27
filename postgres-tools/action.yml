@@ -55,6 +55,11 @@ inputs:
     description: Target PostgreSQL database for restore-custom
     required: false
 
+outputs:
+  backup_filename:
+    description: Filename of the successfully created PostgreSQL backup
+    value: ${{ steps.execute_operation.outputs.backup_filename }}
+
 runs:
   using: composite
 
@@ -195,6 +200,7 @@ runs:
             TODAY=$(date +"%F_%H%M%S")
 
             export BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/database-backup/postgres-backup-${TODAY}.sql"
+            echo "BACKUP_FILENAME=${BLOB_URL##*/}" >> "$GITHUB_ENV"
 
             ;;
 
@@ -238,6 +244,7 @@ runs:
         "${{ github.action_path }}/scripts/create-db-tools-pod.sh"
 
     - name: Execute operation
+      id: execute_operation
       shell: bash
       env:
         OPERATION: ${{ inputs.operation }}
@@ -286,3 +293,8 @@ runs:
             ;;
 
         esac
+
+        if [ "${OPERATION}" = "backup" ]; then
+          echo "backup_filename=${BACKUP_FILENAME}" >> "$GITHUB_OUTPUT"
+          printf '## PostgreSQL backup\n\n`%s`\n' "${BACKUP_FILENAME}" >> "$GITHUB_STEP_SUMMARY"
+        fi
